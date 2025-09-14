@@ -53,7 +53,7 @@ createWeb3Modal({
   enableOnramp: true, // Optional - false as default
   themeVariables: {
     '--w3m-z-index': 9999,
-    '--w3m-accent': '#00f'
+    '--w3m-accent': '#234'
   },
   defaultChain: mainnet,
   chainImages: {
