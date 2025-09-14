@@ -82,7 +82,7 @@ export default function Home() {
         className="absolute inset-0 bg-cover bg-center bg-fixed animate-zoom"
         style={{
           backgroundImage:
-            "url(/images/bg7.jpg)",
+            "url(/images/bg2.jpg)",
         }}
       ></div>
       <div className="absolute inset-0 bg-black/50 z-0"></div>
