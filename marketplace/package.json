@@ -1,0 +1,26 @@
+{
+  "name": "marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@web3modal/ethers": "^5.1.11",
+    "@web3modal/react": "^2.7.1",
+    "autoprefixer": "^10.4.21",
+    "ethers": "^6.15.0",
+    "next": "^15.4.6",
+    "postcss": "^8.5.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4.1.12"
+  }
+}
