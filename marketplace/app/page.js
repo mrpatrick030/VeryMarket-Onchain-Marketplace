@@ -109,7 +109,7 @@ export default function Home() {
         <h1 className="text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg animate-fadeIn">
           Welcome to <span className="text-gray-900">VeryMarket</span>
         </h1>
-        <div className="mt-4 text-lg md:text-xl font-semibold text-gray-900 typewriter">
+        <div className="mt-4 text-lg md:text-xl font-semibold text-gray-900 animate-fadeIn">
           E-commerce for the underbanked across Africa
         </div>
 
@@ -118,7 +118,7 @@ export default function Home() {
           and manage your assets seamlessly on-chain.
         </p>
 
-        <div className="my-8 flex gap-4 animate-slideUp delay-400">
+        <div className="my-8 flex gap-4 animate-slideUp">
           <button
             onClick={() => router.push("/dashboard")}
             className="px-6 py-3 bg-gray-800 cursor-pointer hover:bg-gray-900 text-white font-semibold rounded-xl shadow-lg transition-all transform hover:-translate-y-1 hover:scale-105"
