@@ -1,7 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import {
+  useWeb3ModalProvider,
+  useWeb3ModalAccount,
+} from "@web3modal/ethers/react";
+import { BrowserProvider, Contract } from "ethers";
 
 import Navbar from "@/components/Navbar";
 import OrdersTab from "./OrdersTab";
@@ -12,10 +15,9 @@ import DisputesTab from "./DisputesTab";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 
 const TOKEN_LOGOS = {
-  "0x0000000000000000000000000000000000000000": { logo: "../images/eth.png", name: "ETH" },
-  "0xYourUSDTAddressHere": { logo: "../images/usdt.png", name: "USDT" },
-  "0xYourDAIAddressHere": { logo: "/logos/dai.svg", name: "DAI" },
-  "0xYourHDFAddressHere": { logo: "/logos/hdf.svg", name: "HDF" },
+  "0x0000000000000000000000000000000000000002": { logo: "images/tether.png", name: "USDT" },
+  "0x0000000000000000000000000000000000000001": { logo: "/images/dai.png", name: "DAI" },
+  "0x0000000000000000000000000000000000000000": {logo: "images/eth.png", name: "ETH" }
 };
 
 export default function Dashboard() {
@@ -30,14 +32,24 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
-  const STATUS = ["None", "Escrowed", "Shipped", "Disputed", "Refunded", "Released"];
+  const STATUS = [
+    "None",
+    "Escrowed",
+    "Shipped",
+    "Disputed",
+    "Refunded",
+    "Released",
+  ];
   const isAdmin = address?.toLowerCase() === owner;
 
-  // Load orders from smart contract
   async function loadOrders() {
     if (!walletProvider) return;
     const provider = new BrowserProvider(walletProvider);
-    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+    const contract = new Contract(
+      MARKETPLACE_ADDRESS,
+      MARKETPLACE_ABI,
+      provider
+    );
 
     try {
       const count = Number(await contract.orderCount());
@@ -55,11 +67,14 @@ export default function Dashboard() {
     }
   }
 
-  // Load listings from smart contract
   async function loadListings() {
     if (!walletProvider) return;
     const provider = new BrowserProvider(walletProvider);
-    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+    const contract = new Contract(
+      MARKETPLACE_ADDRESS,
+      MARKETPLACE_ABI,
+      provider
+    );
 
     try {
       const count = Number(await contract.listingCount());
@@ -87,8 +102,11 @@ export default function Dashboard() {
 
   function pushToast(message, type = "info") {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(
+      () => setToasts((prev) => prev.filter((t) => t.id !== id)),
+      5000
+    );
   }
 
   async function act(orderId, fn, buyerPercent) {
@@ -117,30 +135,61 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={darkMode ? "p-6 max-w-6xl mx-auto bg-gray-900 text-gray-200 min-h-screen" : "p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen"}>
-      
-      <Navbar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        isAdmin={isAdmin} 
-        darkMode={darkMode} 
-        setDarkMode={setDarkMode} 
+    <div
+      className={
+        darkMode
+          ? "p-6 max-w-6xl mx-auto bg-gray-900 text-gray-200 min-h-screen"
+          : "p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen"
+      }
+    >
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isAdmin={isAdmin}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
       />
 
-      {/* Toasts */}
-      <div className="fixed top-4 right-4 flex flex-col gap-2 z-50">
-        {toasts.map(t => (
-          <div key={t.id} className={`px-4 py-2 rounded shadow-lg text-white ${t.type === "error" ? "bg-red-600" : "bg-green-600"}`}>
-            {t.message}
-          </div>
-        ))}
+      {/* toasts map */}
+      <div className="relative">
+        <div className="absolute top-0 right-0 flex flex-col gap-2 z-50">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className={`px-4 py-2 rounded shadow-lg text-white animate-fadeIn ${
+                t.type === "error" ? "bg-red-600" : "bg-green-600"
+              }`}
+            >
+              {t.message}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Tabs Content */}
-      {activeTab === "orders" && <OrdersTab orders={orders} address={address} act={act} TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} />}
-      {activeTab === "listings" && <ListingsTab listings={listings} TOKEN_LOGOS={TOKEN_LOGOS} />}
-      {activeTab === "create" && <CreateListingTab walletProvider={walletProvider} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} />}
-      {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} act={act} TOKEN_LOGOS={TOKEN_LOGOS} />}
+      {activeTab === "orders" && (
+        <OrdersTab
+          orders={orders}
+          address={address}
+          act={act}
+          TOKEN_LOGOS={TOKEN_LOGOS}
+          STATUS={STATUS}
+        />
+      )}
+      {activeTab === "listings" && (
+        <ListingsTab listings={listings} TOKEN_LOGOS={TOKEN_LOGOS} />
+      )}
+      {activeTab === "create" && (
+        <CreateListingTab
+          walletProvider={walletProvider}
+          pushToast={pushToast}
+          TOKEN_LOGOS={TOKEN_LOGOS}
+          darkMode={darkMode}
+        />
+      )}
+      {activeTab === "disputes" && isAdmin && (
+        <DisputesTab orders={orders} act={act} TOKEN_LOGOS={TOKEN_LOGOS} />
+      )}
     </div>
   );
 }

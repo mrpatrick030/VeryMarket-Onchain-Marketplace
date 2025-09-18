@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = { title: "Very Market", description: "Decentralized Marketplace" };
+export const metadata = { title: "VeryMarket", description: "Decentralized Marketplace" };
 export default function RootLayout({ children }) {
   return (
     <html lang="en">

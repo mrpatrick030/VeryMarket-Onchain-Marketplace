@@ -93,7 +93,7 @@ export default function Home() {
           backgroundImage: "url(/images/bg2.jpg)",
         }}
       ></div>
-      <div className="absolute inset-0 bg-black/50 z-0"></div>
+      <div className="absolute inset-0 bg-black/40 z-0"></div>
 
       {/* Floating shopping icons */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
