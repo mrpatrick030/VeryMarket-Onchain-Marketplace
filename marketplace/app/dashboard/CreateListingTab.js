@@ -257,7 +257,7 @@ export default function CreateListingTab({ walletProvider, pushToast, TOKEN_LOGO
       <button 
         onClick={createListing} 
         disabled={loading2} 
-        className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+        className="px-4 py-2 rounded bg-blue-600 text-white font-semibold cursor-pointer hover:bg-blue-700 transition disabled:opacity-50"
       >
         {loading2 ? "⏳ Creating..." : "🚀 Create Listing"}
       </button>
