@@ -36,9 +36,9 @@ export default function Home() {
         const orders = await contract.orderCount();
 
         const fetched = [];
-        for (let i = 0; i < orders; i++) {
+        for (let i = 1; i <= orders; i++) {
           const anyOrder = await contract.orders(i);
-          if (Number(anyOrder.status) === 3) {
+          if (Number(anyOrder.status) === 5) {
             fetched.push(anyOrder);
           }
         }
@@ -46,7 +46,7 @@ export default function Home() {
         setStats({
           listings: Number(listings),
           orders: Number(orders),
-          disputes: [fetched],
+          disputes: fetched,
         });
       } catch (err) {
         console.error("Error fetching stats:", err);

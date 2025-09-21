@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 // Paste your deployed address & ABI from Remix after deployment
-export const MARKETPLACE_ADDRESS = "0xfB8123CA0077780A229f2ED865466Ba267F5dcE9";
+export const MARKETPLACE_ADDRESS = "0xCFd6E3F72F6Fe1Bf5Eae7f33bd8087550CD97c1A";
 export const MARKETPLACE_ABI = [
   {
     inputs: [
@@ -25,28 +25,38 @@ export const MARKETPLACE_ABI = [
     inputs: [
       {
         internalType: "uint256",
-        name: "listingId",
+        name: "orderId",
         type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "quantity",
-        type: "uint256",
-      },
-      {
-        internalType: "string",
-        name: "verychatThreadHint",
-        type: "string",
       },
     ],
-    name: "buy",
-    outputs: [
+    name: "buyerCancelAndRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
       {
         internalType: "uint256",
         name: "orderId",
         type: "uint256",
       },
     ],
+    name: "buyerCancelBeforeEscrow",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+    ],
+    name: "buyerConfirmAndPay",
+    outputs: [],
     stateMutability: "payable",
     type: "function",
   },
@@ -70,18 +80,15 @@ export const MARKETPLACE_ABI = [
         name: "orderId",
         type: "uint256",
       },
-    ],
-    name: "cancelOrderByBuyer",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
       {
-        internalType: "uint256",
-        name: "orderId",
-        type: "uint256",
+        internalType: "bool",
+        name: "positive",
+        type: "bool",
+      },
+      {
+        internalType: "string",
+        name: "comment",
+        type: "string",
       },
     ],
     name: "confirmDelivery",
@@ -116,6 +123,26 @@ export const MARKETPLACE_ABI = [
         name: "quantity",
         type: "uint256",
       },
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "category",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "dateAdded",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
     ],
     name: "createListing",
     outputs: [
@@ -135,8 +162,94 @@ export const MARKETPLACE_ABI = [
         name: "listingId",
         type: "uint256",
       },
+      {
+        internalType: "uint256",
+        name: "quantity",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "buyerLocation",
+        type: "string",
+      },
+    ],
+    name: "createOrderRequest",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "name",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "location",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "phoneNumber",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "image",
+        type: "string",
+      },
+    ],
+    name: "createStore",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
+      },
     ],
     name: "deactivateListing",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "emergencyWithdraw",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -259,24 +372,6 @@ export const MARKETPLACE_ABI = [
     type: "event",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "emergencyWithdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -306,6 +401,12 @@ export const MARKETPLACE_ABI = [
       },
       {
         indexed: false,
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
         internalType: "address",
         name: "paymentToken",
         type: "address",
@@ -320,12 +421,6 @@ export const MARKETPLACE_ABI = [
         indexed: false,
         internalType: "string",
         name: "title",
-        type: "string",
-      },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "uri",
         type: "string",
       },
       {
@@ -426,18 +521,18 @@ export const MARKETPLACE_ABI = [
     inputs: [
       {
         indexed: true,
-        internalType: "address",
-        name: "previousOwner",
-        type: "address",
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
       },
       {
-        indexed: true,
-        internalType: "address",
-        name: "newOwner",
-        type: "address",
+        indexed: false,
+        internalType: "uint256",
+        name: "totalAmount",
+        type: "uint256",
       },
     ],
-    name: "OwnershipTransferred",
+    name: "OrderConfirmedAndPaid",
     type: "event",
   },
   {
@@ -464,37 +559,31 @@ export const MARKETPLACE_ABI = [
       {
         indexed: false,
         internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
         name: "quantity",
         type: "uint256",
       },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "paymentToken",
-        type: "address",
-      },
     ],
-    name: "Purchased",
+    name: "OrderRequested",
     type: "event",
   },
   {
+    anonymous: false,
     inputs: [
       {
-        internalType: "uint256",
-        name: "orderId",
-        type: "uint256",
+        indexed: true,
+        internalType: "address",
+        name: "previousOwner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "newOwner",
+        type: "address",
       },
     ],
-    name: "refundBuyer",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
+    name: "OwnershipTransferred",
+    type: "event",
   },
   {
     anonymous: false,
@@ -516,6 +605,13 @@ export const MARKETPLACE_ABI = [
     type: "event",
   },
   {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "uint256",
@@ -523,19 +619,71 @@ export const MARKETPLACE_ABI = [
         type: "uint256",
       },
       {
-        internalType: "uint16",
-        name: "buyerPercent",
-        type: "uint16",
+        internalType: "uint256",
+        name: "refundToBuyer",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "payoutToSeller",
+        type: "uint256",
       },
     ],
-    name: "releaseToSeller",
+    name: "resolveDispute",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [],
-    name: "renounceOwnership",
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "buyer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "positive",
+        type: "bool",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "comment",
+        type: "string",
+      },
+    ],
+    name: "SellerRated",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "shippingFee",
+        type: "uint256",
+      },
+      {
+        internalType: "uint16",
+        name: "etaDays",
+        type: "uint16",
+      },
+    ],
+    name: "sellerSetShipping",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -575,6 +723,75 @@ export const MARKETPLACE_ABI = [
     anonymous: false,
     inputs: [
       {
+        indexed: true,
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "shippingFee",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint16",
+        name: "etaDays",
+        type: "uint16",
+      },
+    ],
+    name: "ShippingSet",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "name",
+        type: "string",
+      },
+      {
+        indexed: false,
+        internalType: "string",
+        name: "image",
+        type: "string",
+      },
+    ],
+    name: "StoreCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+    ],
+    name: "StoreUpdated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
         indexed: false,
         internalType: "address",
         name: "token",
@@ -604,25 +821,6 @@ export const MARKETPLACE_ABI = [
     type: "function",
   },
   {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "orderId",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "threadHint",
-        type: "string",
-      },
-    ],
-    name: "VerychatSuggestedThread",
-    type: "event",
-  },
-  {
     stateMutability: "payable",
     type: "fallback",
   },
@@ -650,6 +848,44 @@ export const MARKETPLACE_ABI = [
       },
     ],
     name: "updateListing",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "name",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "location",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "phoneNumber",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "image",
+        type: "string",
+      },
+    ],
+    name: "updateStore",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -724,6 +960,221 @@ export const MARKETPLACE_ABI = [
   },
   {
     inputs: [],
+    name: "getActiveListings",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "price",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "title",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "uri",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "active",
+            type: "bool",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "initialQuantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "category",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "dateAdded",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+        ],
+        internalType: "struct Marketplace.Listing[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getAllListings",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "price",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "title",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "uri",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "active",
+            type: "bool",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "initialQuantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "category",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "dateAdded",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+        ],
+        internalType: "struct Marketplace.Listing[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getAllStores",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "name",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "location",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "phoneNumber",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "image",
+            type: "string",
+          },
+          {
+            internalType: "uint256",
+            name: "positiveRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "negativeRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "exists",
+            type: "bool",
+          },
+        ],
+        internalType: "struct Marketplace.Store[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "getApprovedTokens",
     outputs: [
       {
@@ -787,8 +1238,93 @@ export const MARKETPLACE_ABI = [
             name: "initialQuantity",
             type: "uint256",
           },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "category",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "dateAdded",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
         ],
         internalType: "struct Marketplace.Listing",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getMyStore",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "name",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "location",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "phoneNumber",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "image",
+            type: "string",
+          },
+          {
+            internalType: "uint256",
+            name: "positiveRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "negativeRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "exists",
+            type: "bool",
+          },
+        ],
+        internalType: "struct Marketplace.Store",
         name: "",
         type: "tuple",
       },
@@ -839,9 +1375,44 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
             internalType: "enum Marketplace.OrderStatus",
             name: "status",
             type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
           },
           {
             internalType: "uint64",
@@ -860,12 +1431,12 @@ export const MARKETPLACE_ABI = [
   {
     inputs: [
       {
-        internalType: "address",
-        name: "user",
-        type: "address",
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
       },
     ],
-    name: "getOrdersByUser",
+    name: "getOrdersForListing",
     outputs: [
       {
         components: [
@@ -900,9 +1471,44 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
             internalType: "enum Marketplace.OrderStatus",
             name: "status",
             type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
           },
           {
             internalType: "uint64",
@@ -911,6 +1517,421 @@ export const MARKETPLACE_ABI = [
           },
         ],
         internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+    ],
+    name: "getOrdersForStore",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+    ],
+    name: "getOrdersForUser",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+    ],
+    name: "getStore",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "name",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "location",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "phoneNumber",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "image",
+            type: "string",
+          },
+          {
+            internalType: "uint256",
+            name: "positiveRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "negativeRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "exists",
+            type: "bool",
+          },
+        ],
+        internalType: "struct Marketplace.Store",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+    ],
+    name: "getStoreByAddress",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address",
+          },
+          {
+            internalType: "string",
+            name: "name",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "location",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "phoneNumber",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "image",
+            type: "string",
+          },
+          {
+            internalType: "uint256",
+            name: "positiveRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "negativeRatings",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "exists",
+            type: "bool",
+          },
+        ],
+        internalType: "struct Marketplace.Store",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+    ],
+    name: "getStoreListings",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "price",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "title",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "uri",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "active",
+            type: "bool",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "initialQuantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "string",
+            name: "category",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "dateAdded",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "description",
+            type: "string",
+          },
+        ],
+        internalType: "struct Marketplace.Listing[]",
         name: "",
         type: "tuple[]",
       },
@@ -980,6 +2001,26 @@ export const MARKETPLACE_ABI = [
         internalType: "uint256",
         name: "initialQuantity",
         type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "category",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "dateAdded",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "description",
+        type: "string",
       },
     ],
     stateMutability: "view",
@@ -1052,9 +2093,44 @@ export const MARKETPLACE_ABI = [
         type: "uint256",
       },
       {
+        internalType: "uint256",
+        name: "shippingFee",
+        type: "uint256",
+      },
+      {
+        internalType: "uint16",
+        name: "estimatedDeliveryDays",
+        type: "uint16",
+      },
+      {
+        internalType: "string",
+        name: "buyerLocation",
+        type: "string",
+      },
+      {
         internalType: "enum Marketplace.OrderStatus",
         name: "status",
         type: "uint8",
+      },
+      {
+        internalType: "bool",
+        name: "fundsEscrowed",
+        type: "bool",
+      },
+      {
+        internalType: "bool",
+        name: "completed",
+        type: "bool",
+      },
+      {
+        internalType: "string",
+        name: "buyerComment",
+        type: "string",
+      },
+      {
+        internalType: "bool",
+        name: "rated",
+        type: "bool",
       },
       {
         internalType: "uint64",
@@ -1073,6 +2149,102 @@ export const MARKETPLACE_ABI = [
         internalType: "address",
         name: "",
         type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    name: "storeByOwner",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "storeCount",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "stores",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        internalType: "string",
+        name: "name",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "description",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "location",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "phoneNumber",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "image",
+        type: "string",
+      },
+      {
+        internalType: "uint256",
+        name: "positiveRatings",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "negativeRatings",
+        type: "uint256",
+      },
+      {
+        internalType: "bool",
+        name: "exists",
+        type: "bool",
       },
     ],
     stateMutability: "view",
