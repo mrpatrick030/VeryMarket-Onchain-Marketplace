@@ -25,7 +25,7 @@ export default function MarketplaceTab({ walletProvider, pushToast, TOKEN_LOGOS,
   // Listing form
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState("");
   const [token, setToken] = useState(Object.keys(TOKEN_LOGOS)[0] || "0x0000000000000000000000000000000000000000");
   const [listingImage, setListingImage] = useState(null);
   const [listingImageHash, setListingImageHash] = useState("");
@@ -287,7 +287,7 @@ export default function MarketplaceTab({ walletProvider, pushToast, TOKEN_LOGOS,
 
           {/* Token Selector */}
           <div className="relative">
-            <div className={`flex items-center justify-between p-2 border rounded cursor-pointer ${inputBg}`} onClick={() => setOpenTokenDropdown(!openTokenDropdown)}>
+            <div className={`flex items-center justify-between p-2 border-2 border-gray-400 rounded cursor-pointer ${inputBg}`} onClick={() => setOpenTokenDropdown(!openTokenDropdown)}>
               <span className="flex items-center gap-2">
                 <img src={TOKEN_LOGOS[token].logo} alt="" className="w-5 h-5" />
                 {TOKEN_LOGOS[token].name} {token === "0x0000000000000000000000000000000000000000" && "(Native ETH)"}
