@@ -4,69 +4,81 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   useWeb3ModalProvider,
-  useWeb3ModalAccount,
 } from "@web3modal/ethers/react";
 import { BrowserProvider, Contract } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
 
 export default function Home() {
   const { walletProvider } = useWeb3ModalProvider();
-  const { address } = useWeb3ModalAccount();
   const router = useRouter();
 
   const [stats, setStats] = useState({
     listings: 0,
     orders: 0,
-    disputes: [],
+    disputes: 0,
   });
 
-  // Fetch stats
+  const [highlight, setHighlight] = useState({
+    listings: false,
+    orders: false,
+    disputes: false,
+  });
+
+  // Fetch stats + subscribe to events
   useEffect(() => {
-    async function fetchStats() {
-      if (!walletProvider) return;
+    if (!walletProvider) return;
+    const provider = new BrowserProvider(walletProvider);
+    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+
+    async function updateStats() {
       try {
-        const provider = new BrowserProvider(walletProvider);
-        const contract = new Contract(
-          MARKETPLACE_ADDRESS,
-          MARKETPLACE_ABI,
-          provider
-        );
+        const listings = Number(await contract.listingCount());
+        const orders = Number(await contract.orderCount());
 
-        const listings = await contract.listingCount();
-        const orders = await contract.orderCount();
-
-        const fetched = [];
-        for (let i = 1; i <= orders; i++) {
-          const anyOrder = await contract.orders(i);
-          if (Number(anyOrder.status) === 5) {
-            fetched.push(anyOrder);
-          }
+        let disputes = 0;
+        for (let i = 0; i < orders; i++) {
+          const order = await contract.orders(i);
+          if (Number(order.status) === 5) disputes++;
         }
 
-        setStats({
-          listings: Number(listings),
-          orders: Number(orders),
-          disputes: fetched,
+        setHighlight({
+          listings: listings !== stats.listings,
+          orders: orders !== stats.orders,
+          disputes: disputes !== stats.disputes,
         });
+
+        setStats({ listings, orders, disputes });
+
+        setTimeout(() => {
+          setHighlight({ listings: false, orders: false, disputes: false });
+        }, 1500);
       } catch (err) {
         console.error("Error fetching stats:", err);
       }
     }
-    fetchStats();
-  }, [walletProvider]);
 
-  // create countdown for dashboard navigation
+    updateStats();
+
+    // Real-time event listeners
+    contract.on("ListingCreated", updateStats);
+    contract.on("OrderRequested", updateStats);
+    contract.on("DisputeOpened", updateStats);
+    contract.on("DisputeResolved", updateStats);
+
+    return () => {
+      contract.removeAllListeners();
+    };
+  }, [walletProvider, stats]);
+
+  // countdown
   const [count, setCount] = useState(30);
   useEffect(() => {
     const countdownInterval = setInterval(() => {
-      setCount((prevCount) => prevCount - 1);
+      setCount((prev) => prev - 1);
     }, 1000);
-
-    // Clear the interval when the component is unmounted
     return () => clearInterval(countdownInterval);
   }, []);
 
-  //navigate to dashboard page
   const [allowAutoNav, setAllowAutoNav] = useState(true);
   useEffect(() => {
     const autoNav =
@@ -75,27 +87,21 @@ export default function Home() {
         router.push("/dashboard");
       }, 31000);
 
-    // Cleanup function to clear the timeout when the component is unmounted or auto navigation is stopped
     return () => clearTimeout(autoNav);
   }, [allowAutoNav, router]);
 
-  //stop navigation to dashboard page
-  const stopNav = () => {
-    setAllowAutoNav(false);
-  };
+  const stopNav = () => setAllowAutoNav(false);
 
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden">
-      {/* Animated Background */}
+      {/* bg */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-fixed animate-zoom"
-        style={{
-          backgroundImage: "url(/images/bg2.jpg)",
-        }}
-      ></div>
-      <div className="absolute inset-0 bg-black/40 z-0"></div>
+        style={{ backgroundImage: "url(/images/bg2.jpg)" }}
+      />
+      <div className="absolute inset-0 bg-black/40 z-0" />
 
-      {/* Floating shopping icons */}
+      {/* icons */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <span className="floating-icon">🛍️</span>
         <span className="floating-icon delay-200">💳</span>
@@ -104,20 +110,18 @@ export default function Home() {
 
       <Navbar />
 
-      {/* Intro Section */}
-      <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center bg-[rgba(255,255,255,0.1)] backdrop-blur-md shadow-lg p-10 md:mx-[20%]  mx-[5%] rounded-lg">
+      {/* Intro */}
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center bg-[rgba(255,255,255,0.1)] backdrop-blur-md shadow-lg p-10 md:mx-[20%] mx-[5%] rounded-lg">
         <h1 className="text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg animate-fadeIn">
           Welcome to <span className="text-gray-900">VeryMarket</span>
         </h1>
         <div className="mt-4 text-lg md:text-xl font-semibold text-gray-900 animate-fadeIn">
           E-commerce for the underbanked across Africa
         </div>
-
         <p className="mt-4 text-lg md:text-xl text-white/90 max-w-2xl animate-fadeIn">
           A decentralized marketplace powered by the Hedera Network. Buy, sell,
           and manage your assets seamlessly on-chain.
         </p>
-
         <div className="my-8 flex gap-4 animate-slideUp">
           <button
             onClick={() => router.push("/dashboard")}
@@ -134,16 +138,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Auto-navigation section */}
+      {/* Auto-navigation */}
       <div className="relative z-10 my-[1cm] flex flex-col items-center justify-center">
         {allowAutoNav ? (
           <div className="rounded-xl p-8 text-center w-[90%] md:w-[400px] animate-fadeIn">
             <p className="text-white text-lg font-medium mb-6">
               Redirecting you to the dashboard...
             </p>
-
-            {/* Circular countdown */}
-            <div className="relative w-20 h-20  mx-auto">
+            <div className="relative w-20 h-20 mx-auto">
               <svg
                 viewBox="0 0 80 80"
                 className="w-full h-full rounded-[100%] transform -rotate-90"
@@ -151,7 +153,7 @@ export default function Home() {
                 <circle
                   cx="40"
                   cy="40"
-                  r={count > 0 ? 36 * (count / 30) : 36} // ✅ shrink while counting, burst at 0
+                  r={count > 0 ? 36 * (count / 30) : 36}
                   stroke={count > 20 ? "#234" : count > 10 ? "#44f" : "#ef4444"}
                   strokeWidth="6"
                   fill="none"
@@ -166,12 +168,10 @@ export default function Home() {
                         : count > 10
                         ? "animate-glowBlue"
                         : "animate-glowRed"
-                      : "animate-burst" // ✅ burst effect at 0
+                      : "animate-burst"
                   }
                 />
               </svg>
-
-              {/* Countdown number */}
               <span
                 className={`absolute inset-0 flex items-center justify-center text-lg font-bold ${
                   count > 20
@@ -184,8 +184,6 @@ export default function Home() {
                 {count > 0 ? count : "🛒"}
               </span>
             </div>
-
-            {/* Cancel button */}
             <button
               onClick={stopNav}
               className="mt-8 px-6 py-2 bg-red-900 cursor-pointer hover:bg-red-800 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105"
@@ -196,14 +194,13 @@ export default function Home() {
         ) : (
           <div className="backdrop-blur-md rounded-xl shadow-lg p-6 text-center w-[70%] md:w-[400px] animate-fadeIn">
             <p className="text-white text-lg font-medium">
-              Auto-navigation{" "}
-              <span className="font-bold text-red-500">cancelled</span>
+              Auto-navigation <span className="font-bold text-red-500">cancelled</span>
             </p>
           </div>
         )}
       </div>
 
-      {/* Statistics Section */}
+      {/* Stats */}
       <div className="relative z-10 py-12 px-6">
         <h2
           className="text-center text-2xl font-bold text-white mb-8 animate-fadeIn"
@@ -212,36 +209,45 @@ export default function Home() {
           Marketplace Overview
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          <div className="statCol p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 shadow-lg text-center transform hover:scale-105 transition animate-slideUp delay-200">
+          {/* Listings */}
+          <div
+            className={`statCol p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-700 shadow-lg text-center transform transition ${
+              highlight.listings
+                ? "animate-pulse border-2 border-yellow-400"
+                : "hover:scale-105"
+            }`}
+          >
             <h3 className="text-4xl font-bold text-white">{stats.listings}</h3>
             <p className="mt-2 text-white/90">
-              {stats.listings == "1" ? (
-                <span>Total Listing</span>
-              ) : (
-                <span>Total Listings</span>
-              )}
+              {stats.listings === 1 ? "Total Listing" : "Total Listings"}
             </p>
           </div>
-          <div className="statCol p-6 rounded-xl bg-gradient-to-br from-blue-900 to-blue-700 shadow-lg text-center transform hover:scale-105 transition animate-slideUp delay-400">
+
+          {/* Orders */}
+          <div
+            className={`statCol p-6 rounded-xl bg-gradient-to-br from-blue-900 to-blue-700 shadow-lg text-center transform transition ${
+              highlight.orders
+                ? "animate-pulse border-2 border-yellow-400"
+                : "hover:scale-105"
+            }`}
+          >
             <h3 className="text-4xl font-bold text-white">{stats.orders}</h3>
             <p className="mt-2 text-white/90">
-              {stats.orders == "1" ? (
-                <span>Active Order</span>
-              ) : (
-                <span>Active Orders</span>
-              )}
+              {stats.orders === 1 ? "Active Order" : "Active Orders"}
             </p>
           </div>
-          <div className="statCol p-6 rounded-xl bg-gradient-to-br from-red-700 to-red-500 shadow-lg text-center transform hover:scale-105 transition animate-slideUp delay-600">
-            <h3 className="text-4xl font-bold text-white">
-              {stats.disputes.length}
-            </h3>
+
+          {/* Disputes */}
+          <div
+            className={`statCol p-6 rounded-xl bg-gradient-to-br from-red-700 to-red-500 shadow-lg text-center transform transition ${
+              highlight.disputes
+                ? "animate-pulse border-2 border-yellow-400"
+                : "hover:scale-105"
+            }`}
+          >
+            <h3 className="text-4xl font-bold text-white">{stats.disputes}</h3>
             <p className="mt-2 text-white/90">
-              {stats.disputes.length == "1" ? (
-                <span>Disputed Order</span>
-              ) : (
-                <span>Disputed Orders</span>
-              )}
+              {stats.disputes === 1 ? "Disputed Order" : "Disputed Orders"}
             </p>
           </div>
         </div>
