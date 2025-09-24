@@ -5,17 +5,8 @@ import {
   useWeb3ModalAccount,
 } from "@web3modal/ethers/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
-import {
-  Search,
-  Grid,
-  List,
-  LayoutGrid,
-  Menu,
-  X,
-  MessageCircle,
-  MessageSquare,
-  UserCircle,
-} from "lucide-react";
+import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder } from "lucide-react";
+
 import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
@@ -178,50 +169,51 @@ const categories = useMemo(() => ["All", ...CATEGORIES.map((c) => c.name)], []);
   // ---------------- CONTRACT ACTIONS (LISTINGS) ----------------
 
   // Open edit: fetch listing from contract and prefill
-  const openEditModal = async (listingId) => {
-    if (!contract) return alert("Connect wallet first");
-    try {
-      const onChain = await contract.getListing(listingId);
-      // mapping onchain Listing (price is raw uint)
-      setEditingListingId(listingId);
-      setForm({
-        paymentToken: onChain.paymentToken,
-        price: Number(formatUnits(onChain.price, 18)).toString(),
-        title: onChain.title,
-        uri: onChain.uri,
-        quantity: String(onChain.quantity),
-        storeId: String(onChain.storeId),
-        category: onChain.category,
-        description: onChain.description,
-      });
-      setEditModalOpen(true);
-    } catch (err) {
-      console.error("getListing err", err);
-      alert("Error loading listing for edit");
-    }
-  };
+const openEditModal = async (listingId) => {
+  if (!contract) return alert("Connect wallet first");
+  try {
+    const onChain = await contract.getListing(listingId);
+
+    setEditingListingId(listingId);
+
+    setForm({
+      // Only price + quantity matter for update, but we can still fetch/store other fields
+      price: Number(formatUnits(onChain.price, 18)).toString(),
+      quantity: String(onChain.quantity),
+    });
+
+    setEditModalOpen(true);
+  } catch (err) {
+    console.error("getListing err", err);
+    alert("Error loading listing for edit");
+  }
+};
 
 
-// Update listing
-const updateListing = async () => {
-  if (!contract || editingListingId == null) return;
+//Update listing
+const updateListing = async (listingId, form) => {
   try {
     setLoadingAction(true);
-    const active = true;
+
+    const provider = new BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
+
+    const priceWei = parseUnits(form.price.toString(), 18);
+
     const tx = await contract.updateListing(
-      editingListingId,
-      parseUnits(form.price.toString(), 18),
-      active,
-      Number(form.quantity)
+      listingId,
+      priceWei,
+      true,
+      form.quantity
     );
+
     await tx.wait();
-    pushToast("success", "Listing updated ✅");
+    pushToast("✅ Listing updated successfully!");
     setEditModalOpen(false);
-    setEditingListingId(null);
-    await loadActiveListings();
   } catch (err) {
-    console.error("updateListing err", err);
-    pushToast("error", "Error updating listing");
+    console.error("Update error:", err);
+    pushToast("❌ Failed to update listing", "error");
   } finally {
     setLoadingAction(false);
   }
@@ -428,13 +420,15 @@ const call = async (fn, ...args) => {
     fetchSellerListings();
   }, [contract, profileSeller]);
 
-  //Get substring of seller address
-  const truncateAddress = (address) => {
-  if (!address) return "";
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
-
-
+  //pagination
+const ITEMS_PER_PAGE = 5; // adjust per your grid
+const [currentPage, setCurrentPage] = useState(1);
+// Calculate pagination
+const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+const paginatedItems = filtered.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
 
 
   // ---------------- RENDER ----------------
@@ -584,7 +578,7 @@ const call = async (fn, ...args) => {
   {/* Product Grid */}
 {!profileSeller && (
   <div className={`grid ${gridClass} gap-6`}>
-    {filtered.map((l) => (
+    {paginatedItems.map((l) => (
       <div
         key={l.id}
         className={`border rounded-xl shadow-md overflow-hidden flex flex-col transition hover:shadow-lg cursor-pointer
@@ -602,14 +596,51 @@ const call = async (fn, ...args) => {
         <div className="p-4 flex flex-col flex-grow">
           {/* Title + Excerpt */}
           <h3 className="font-bold text-md mb-1 truncate capitalize">{l.title}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 first-letter:uppercase mb-2">
+          {/* Store name or fallback */}
+
+           {/* Category + Store block (icon above badge, with shadow) */}
+<div className="mt-2 flex items-start gap-3">
+  {/* Icon circle (folder) */}
+  <div
+    className={`flex items-center justify-center w-10 h-10 rounded-lg shadow-md flex-shrink-0
+      ${darkMode ? "bg-indigo-900/40" : "bg-indigo-50"}
+    `}
+    aria-hidden="true"
+    title={l.category || "Uncategorized"}
+  >
+    <Folder className={`w-5 h-5 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`} />
+  </div>
+
+  {/* Text column: badge + store name/id */}
+  <div className="flex-1 min-w-0">
+    {/* Category badge (pill) */}
+    <div className="flex items-center gap-2">
+      <span
+        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full shadow-sm truncate
+          ${darkMode ? "bg-indigo-800/60 text-indigo-200" : "bg-indigo-100 text-indigo-700"}
+        `}
+        style={{ boxShadow: darkMode ? "0 6px 18px rgba(15,23,42,0.35)" : "0 6px 18px rgba(79,70,229,0.06)" }}
+      >
+        {/* ensure first letter uppercase */}
+        {(l.category || "Uncategorized").toString().replace(/^\w/, (c) => c.toUpperCase())}
+      </span>
+    </div>
+
+    {/* Store name (highlighted) and Store ID */}
+    <div className="mt-1 flex items-center justify-between">
+      <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+       {l.storeName && l.storeName.trim() !== "" ? l.storeName : `Store #${l.storeId}`}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 first-letter:uppercase my-2">
             {l.description || "No description available"}
           </p>
 
           {/* Store Info */}
-          <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-            Store ID: <span className="font-medium text-gray-800 dark:text-gray-200">#{l.storeId}</span>
-          </div>
           {l.storeName && (
             <div className="text-xs italic text-gray-500 dark:text-gray-400 mb-2">
               {l.storeName}
@@ -680,51 +711,131 @@ const call = async (fn, ...args) => {
       </div>
     ))}
   </div>
+  )}
+{/* Pagination */}
+{totalPages > 1 && (
+  <div className="mt-20 flex justify-center items-center gap-2 flex-wrap">
+    {/* Prev Button */}
+    <button
+      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+      disabled={currentPage === 1}
+      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
+        ${darkMode
+          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
+          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+        }`}
+    >
+      Prev
+    </button>
+
+    {/* Page Numbers */}
+    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      <button
+        key={page}
+        onClick={() => setCurrentPage(page)}
+        className={`px-4 py-2 rounded-lg border cursor-pointer font-medium transition-colors
+          ${page === currentPage
+            ? "bg-blue-500 border-blue-500 text-white"
+            : darkMode
+              ? "border-gray-700 text-gray-200 hover:bg-gray-700"
+              : "border-gray-300 text-gray-700 hover:bg-gray-200"
+          }`}
+      >
+        {page}
+      </button>
+    ))}
+
+    {/* Next Button */}
+    <button
+      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+      disabled={currentPage === totalPages}
+      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
+        ${darkMode
+          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
+          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+        }`}
+    >
+      Next
+    </button>
+  </div>
 )}
 
 
 
+
         {/* Edit Modal */}
-        {editModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setEditModalOpen(false)} />
-            <div className="relative bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-xl">
-              <h3 className="text-lg font-bold mb-3">Edit Listing #{editingListingId}</h3>
-              <div className="grid grid-cols-1 gap-2">
-                <label className="text-sm">Price</label>
-                <input value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} className="p-2 border rounded" />
+{editModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    {/* Overlay */}
+    <div
+      className="absolute inset-0 bg-black/50"
+      onClick={() => setEditModalOpen(false)}
+    />
 
-                <label className="text-sm">Quantity</label>
-                <input type="number" value={form.quantity} onChange={(e) => setForm({...form, quantity: e.target.value})} className="p-2 border rounded" />
+    {/* Modal content */}
+    <div className="relative bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl w-full max-w-xl">
+      <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+        ✏️ <span className="text-yellow-600 dark:text-yellow-400">Edit Listing #{editingListingId}</span>
+      </h3>
 
-                <label className="text-sm">Title</label>
-                <input value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="p-2 border rounded" />
+      <div className="grid grid-cols-1 gap-4">
+        {/* Price */}
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+            Price
+          </label>
+          <input
+            type="number"
+            step="0.0001"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+          />
+        </div>
 
-                <label className="text-sm">Category</label>
-                <input value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="p-2 border rounded" />
+        {/* Quantity */}
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+            Quantity
+          </label>
+          <input
+            type="number"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+          />
+        </div>
+      </div>
 
-                <label className="text-sm">Image URI</label>
-                <input value={form.uri} onChange={(e) => setForm({...form, uri: e.target.value})} className="p-2 border rounded" />
+      {/* Actions */}
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          onClick={() => setEditModalOpen(false)}
+          className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => updateListing(editingListingId, form)}
+          disabled={loadingAction}
+          className="px-4 py-2 rounded-md bg-yellow-600 text-white hover:bg-yellow-500 disabled:opacity-50 transition"
+        >
+          {loadingAction ? "Updating..." : "Update"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-                <label className="text-sm">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} className="p-2 border rounded" rows={3} />
-              </div>
 
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => updateListing()} disabled={loadingAction} className="bg-blue-600 text-white px-4 py-2 rounded">{loadingAction ? "Updating..." : "Update"}</button>
-                <button onClick={() => setEditModalOpen(false)} className="px-4 py-2 rounded border">Cancel</button>
-              </div>
-            </div>
-          </div>
-        )}
 
 
     {/* // ----------------SINGLE PRODUCT AND SELLER PROFILE MODAL ---------------- */}
-    <div className={`p-4 ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>
+    <div className={`${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>
 
       {/* ---------------- SINGLE PRODUCT MODAL ---------------- */}
 {selected && !profileSeller && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div className="fixed p-6 inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div
       className={`p-6 rounded-2xl w-full max-w-2xl relative overflow-y-auto max-h-screen shadow-xl
         ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}
@@ -752,20 +863,43 @@ const call = async (fn, ...args) => {
       <p className="text-sm mb-3 first-letter:uppercase">{(selected.description || "").slice(0, 120)}...</p>
 
       {/* Store Info */}
-      <div className="border-t border-gray-300 dark:border-gray-700 pt-3 mb-3">
-        <div className="text-sm font-medium">
-          Store #{selected.storeId}
-        </div>
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          {selected.storeName || "Unnamed Store"}
-        </div>
-      </div>
+{/* Category + Store block (icon above badge, with shadow) */}
+<div className="mt-4 flex items-start gap-3">
+  {/* Icon circle (folder) */}
+  <div
+    className={`flex items-center justify-center w-10 h-10 rounded-lg shadow-md flex-shrink-0
+      ${darkMode ? "bg-indigo-900/40" : "bg-indigo-50"}
+    `}
+    aria-hidden="true"
+    title={selected.category || "Uncategorized"}
+  >
+    <Folder className={`w-5 h-5 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`} />
+  </div>
 
-      {/* Seller Info */}
-      <div className="mb-4">
-        <div className="text-sm text-gray-600 dark:text-gray-400">Seller</div>
-        <div className="text-base font-medium">{truncateAddress(selected.seller)}</div>
+  {/* Text column: badge + store name/id */}
+  <div className="flex-1 min-w-0">
+    {/* Category badge (pill) */}
+    <div className="flex items-center gap-2">
+      <span
+        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full shadow-sm truncate
+          ${darkMode ? "bg-indigo-800/60 text-indigo-200" : "bg-indigo-100 text-indigo-700"}
+        `}
+        style={{ boxShadow: darkMode ? "0 6px 18px rgba(15,23,42,0.35)" : "0 6px 18px rgba(79,70,229,0.06)" }}
+      >
+        {(selected.category || "Uncategorized").toString().replace(/^\w/, (c) => c.toUpperCase())}
+      </span>
+    </div>
+
+    {/* Store name (highlighted) and Store ID */}
+    <div className="mt-1 flex items-center justify-between">
+      <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+        {selected.storeName && selected.storeName.trim() !== "" 
+          ? `${selected.storeName} Store #${selected.storeId}` 
+          : `Store #${selected.storeId}`}
       </div>
+    </div>
+  </div>
+</div>
 
       {/* Quantity + Price */}
       <div className="flex justify-between items-center mb-5">
@@ -861,7 +995,7 @@ const call = async (fn, ...args) => {
 
       {/* ---------------- SELLER PROFILE MODAL ---------------- */}
       {profileSeller && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed p-6 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-lg shadow p-6 w-full max-w-4xl max-h-screen overflow-y-auto relative
             ${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-900"}
           `}>
@@ -933,7 +1067,6 @@ const call = async (fn, ...args) => {
   fields={inputConfig?.fields}
   onSubmit={inputConfig?.onSubmit}
 />
-
 
 
 

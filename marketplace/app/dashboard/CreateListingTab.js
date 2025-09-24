@@ -531,7 +531,6 @@ const handleTokenKeyDown = (e) => {
         </div>
       )}
 
-      {/* Uncomment this if you want a quick admin approve button temporarily */}
       {/* <button
         onClick={approveEth}
         disabled={ loading}
