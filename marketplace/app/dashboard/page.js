@@ -16,9 +16,10 @@ import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 
 // Token metadata
 const TOKEN_LOGOS = {
+  "0xA85C486c0e57267c954064Fd500077BDEdFa6704": { logo: "/images/usdc.png", name: "USDC" },
   "0x4d54Ac4Df9304E305338fF35272367aD21c0a7dE": { logo: "/images/tether.png", name: "USDT" },
   "0xCbE7063E2B5B5B4f574A9748354B6B076516a536": { logo: "/images/dai.png", name: "DAI" },
-  "0x0000000000000000000000000000000000000000": { logo: "/images/eth.png", name: "ETH" }, // ETH always approved
+  "0x0000000000000000000000000000000000000000": { logo: "/images/eth.png", name: "ETH" },
 };
 
 // Match the contract enum
@@ -173,7 +174,7 @@ export default function Dashboard() {
   }, [isConnected]);
 
   return (
-    <div className={darkMode ? "p-6 max-w-6xl mx-auto bg-gray-900 text-gray-200 min-h-screen" : "p-6 max-w-6xl mx-auto bg-gray-50 min-h-screen"}>
+    <div className={darkMode ? "p-6 max-w-7xl mx-auto bg-gray-900 text-gray-200 min-h-screen" : "p-6 max-w-7xl mx-auto bg-gray-50 min-h-screen"}>
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -195,7 +196,7 @@ export default function Dashboard() {
 
       {/* Tabs */}
       {activeTab === "orders" && <OrdersTab orders={orders} address={address} act={act} TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} />}
-      {activeTab === "listings" && <ListingsTab listings={listings} TOKEN_LOGOS={TOKEN_LOGOS} />}
+      {activeTab === "listings" && <ListingsTab listings={listings} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
       {activeTab === "create" && <CreateListingTab walletProvider={walletProvider} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
       {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} act={act} TOKEN_LOGOS={TOKEN_LOGOS} />}
     </div>

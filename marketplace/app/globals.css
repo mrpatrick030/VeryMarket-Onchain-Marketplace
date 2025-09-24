@@ -275,3 +275,12 @@ body {
 .animate-slideInRight {
   animation: slideInRight 0.4s ease-out;
 }
+
+@keyframes rotate360 {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.rotate-360 {
+  animation: rotate360 0.5s linear;
+}
