@@ -11,6 +11,8 @@ import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
 import InputModal from "./InputModal";
+import ShippingModal from "./ShippingModal";
+import BuyerConfirmPayModal from "./BuyerConfirmPayModal";
 
 
 export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
@@ -33,7 +35,20 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
   const bg = darkMode ? "bg-gray-800" : "bg-white";
   const inputBg = darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900";
 
-
+  //Edit listing modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    paymentToken: Object.keys(TOKEN_LOGOS || {})[0] || "0x0000000000000000000000000000000000000000",
+    price: "",
+    title: "",
+    uri: "",
+    quantity: "",
+    storeId: "",
+    category: "",
+    description: "",
+  });
+  const [editingListingId, setEditingListingId] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(false);
 
   // ---------------- SETUP CONTRACT ----------------
   useEffect(() => {
@@ -63,14 +78,6 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     { name: "Sports & Fitness", symbol: "🏋️" },
     { name: "Books & Stationery", symbol: "📚" },
     { name: "Toys & Games", symbol: "🧸" },
-    { name: "Phones & Tablets", symbol: "📱" },
-    { name: "Laptops & PCs", symbol: "💻" },
-    { name: "TVs & Displays", symbol: "🖥️" },
-    { name: "Headphones & Audio", symbol: "🎧" },
-    { name: "Smartwatches & Wearables", symbol: "⌚" },
-    { name: "Cameras & Photography", symbol: "📷" },
-    { name: "Gaming Consoles", symbol: "🎮" },
-    { name: "Accessories", symbol: "🔌" },
     { name: "Baby Products", symbol: "🍼" },
     { name: "Groceries & Food", symbol: "🛒" },
     { name: "Beverages", symbol: "🥤" },
@@ -89,6 +96,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     { name: "Travel & Luggage", symbol: "✈️" },
     { name: "Gardening & Outdoors", symbol: "🌱" },
     { name: "Energy & Solar", symbol: "🔋" },
+    { name: "Gaming", symbol: "🎮" },
   ];
 
   // ---------------- FETCH ACTIVE LISTINGS ----------------
@@ -100,14 +108,14 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
         id: i + 1,
         title: l.title,
         description: l.description,
-        storeId: Intl.NumberFormat().format(Number(l.storeId)),
+        storeId: Number(l.storeId),
         category: l.category,
         price: Number(formatUnits(l.price, 18)),
         quantity: Number(l.quantity),
         seller: l.seller,
         paymentToken: l.paymentToken,
         uri: l.uri,
-        dateAdded: Number(l.dateAdded) ? new Date(Number(l.dateAdded) * 1000).toLocaleString() : "",
+        dateAdded: Number(l.dateAdded) ? Number(l.dateAdded) * 1000 : Date.now(),
       }));
       setListings(formatted);
       setFiltered(formatted);
@@ -166,21 +174,6 @@ const categories = useMemo(() => ["All", ...CATEGORIES.map((c) => c.name)], []);
   // ---------------- CONTRACT ACTIONS (LISTINGS) ----------------
 
   // Open edit: fetch listing from contract and prefill
-    //Edit listing modal state
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [form, setForm] = useState({
-    paymentToken: Object.keys(TOKEN_LOGOS || {})[0] || "0x0000000000000000000000000000000000000000",
-    price: "",
-    title: "",
-    uri: "",
-    quantity: "",
-    storeId: "",
-    category: "",
-    description: "",
-  });
-  const [editingListingId, setEditingListingId] = useState(null);
-  const [loadingAction, setLoadingAction] = useState(false);
-
 const openEditModal = async (listingId) => {
   if (!contract) return alert("Connect wallet first");
   try {
@@ -309,12 +302,11 @@ const askInput = (title, fields, onSubmit) => {
   setInputOpen(true);
 };
 // Create order request
-// Create order request
-const createOrderRequest = (id) => {
+const createOrderRequest = (id, price, paymentToken, seller) => {
   if (!contract) return pushToast("error", "Connect wallet first");
 
   askInput(
-    "Create a request",
+    "Buy Listing",
     [
       { name: "quantity", label: "Quantity", type: "number", placeholder: "Enter quantity" },
       { name: "location", label: "Delivery Location", type: "text", placeholder: "Enter location" },
@@ -325,22 +317,128 @@ const createOrderRequest = (id) => {
         if (!quantity || !location) return pushToast("error", "All fields required");
 
         setLoadingAction(true);
-
-        // ✅ Only call createOrderRequest — no ETH/tokens sent here
-        const tx = await contract.createOrderRequest(id, quantity, location);
+        let tx;
+        if (paymentToken === "ETH") {
+          tx = await contract.createOrderRequest(id, quantity, location, {
+            value: parseUnits((price * quantity).toString(), 18),
+          });
+        } else {
+          tx = await contract.createOrderRequest(id, quantity, location);
+        }
         await tx.wait();
-
-        pushToast("success", "Order request created");
+        pushToast("success", "Listing purchased");
         await loadActiveListings();
       } catch (err) {
-        console.error("createOrderRequest error", err);
-        pushToast("error", "Error creating order request");
+        console.error("buyListing error", err);
+        pushToast("error", "Error purchasing listing");
       } finally {
         setLoadingAction(false);
       }
     }
   );
 };
+
+
+//seller set shipping
+  const [shippingModalOpen, setShippingModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  const openShippingModal = (orderId) => {
+    setSelectedOrderId(orderId);
+    setShippingModalOpen(true);
+  };
+const sellerSetShipping = async (orderId, shippingFee, etaDays) => {
+  try {
+    const tx = await contract.sellerSetShipping(orderId, shippingFee, etaDays);
+    await tx.wait();
+    pushToast("success", "Shipping details set ✅");
+  } catch (err) {
+    console.error(err);
+    pushToast("error", "Error setting shipping details ❌");
+  }
+};
+
+
+// Buyer confirm and pay
+const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+const [selectedOrder, setSelectedOrder] = useState(null);
+
+// Open modal
+const openConfirmModal = (order) => {
+  setSelectedOrder(order);
+  setConfirmModalOpen(true);
+};
+const buyerConfirmAndPay = async (orderId, paymentToken, total) => {
+  try {
+    let tx;
+
+    if (paymentToken === ethers.ZeroAddress) {
+      // Pay with ETH
+      tx = await contract.buyerConfirmAndPay(orderId, {
+        value: total, // total = amount + shippingFee
+      });
+    } else {
+      // Pay with ERC20
+      const erc20 = new ethers.Contract(
+        paymentToken,
+        [
+          "function approve(address spender, uint256 amount) public returns (bool)"
+        ],
+        signer
+      );
+
+      // 1. Approve contract to spend tokens
+      const approveTx = await erc20.approve(contract.target, total);
+      await approveTx.wait();
+
+      // 2. Call confirm and pay
+      tx = await contract.buyerConfirmAndPay(orderId);
+    }
+
+    await tx.wait();
+    pushToast("success", "Payment confirmed and escrowed ✅");
+  } catch (err) {
+    console.error(err);
+    pushToast("error", "Error confirming payment ❌");
+  }
+};
+
+
+
+
+    // ---------------- CONTRACT ACTIONS ----------------
+    // Generic call helper
+const call = async (fn, ...args) => {
+  try {
+    const tx = await contract[fn](...args);
+    await tx.wait();
+    pushToast("success", `${fn} successful ✅`);
+  } catch (err) {
+    console.error(err);
+    pushToast("error", `Error in ${fn}`);
+  }
+};
+
+  // Seller actions
+  const cancelListing = (id) => call("cancelListing", id);
+  const markShipped = (orderId) => call("markShipped", orderId);
+
+  // Buyer actions
+  const confirmDelivery = (orderId) => call("confirmDelivery", orderId);
+  const buyerCancelBeforeEscrow = (orderId) =>
+    call("buyerCancelBeforeEscrow", orderId);
+  const buyerCancelAndRefund = (orderId) =>
+    call("buyerCancelAndRefund", orderId);
+
+  // Dispute actions
+  const openDispute = (orderId) => call("openDispute", orderId);
+  const resolveDispute = (orderId, ruling) =>
+    call("resolveDispute", orderId, ruling);
+
+  // Queries
+  const getOrdersForListing = (id) => call("getOrdersForListing", id);
+  const getStoreListings = (storeId) => call("getStoreListings", storeId);
+  const getOrdersForStore = (storeId) => call("getOrdersForStore", storeId);
 
 
 
@@ -552,8 +650,7 @@ const paginatedItems = filtered.slice(
         {/* Content */}
         <div className="p-4 flex flex-col flex-grow">
           {/* Title + Excerpt */}
-          <h3 className="font-bold text-lg mb-1 truncate capitalize">{l.title}</h3>
-          {l.dateAdded ? (<div className="mt-1 text-sm text-[#555]">Added: {l.dateAdded}</div>) : ""}
+          <h3 className="font-bold text-md mb-1 truncate capitalize">{l.title}</h3>
           {/* Store name or fallback */}
 
            {/* Category + Store block (icon above badge, with shadow) */}
@@ -587,7 +684,7 @@ const paginatedItems = filtered.slice(
     {/* Store name (highlighted) and Store ID */}
     <div className="mt-1 flex items-center justify-between">
       <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-       {l.storeName && l.storeName.trim() !== "" ? l.storeName : `Store #${l.storeId.toString().padStart(3, "0")}`}
+       {l.storeName && l.storeName.trim() !== "" ? l.storeName : `Store #${l.storeId}`}
       </div>
     </div>
   </div>
@@ -607,8 +704,8 @@ const paginatedItems = filtered.slice(
      
             {/* Quantity + Price */}
 <div className="flex justify-between items-center mt-auto">
-  <span className="text-xs text-gray-600 underline dark:text-gray-400">
-    Quantity available: {l.quantity}
+  <span className="text-xs text-gray-600 dark:text-gray-400">
+    Qty: {l.quantity}
   </span>
   <span className="text-base font-semibold flex items-center gap-2">
     {l.price}
@@ -657,9 +754,25 @@ const paginatedItems = filtered.slice(
             >
               Request
             </button>
-            <button onClick={(e) => { e.stopPropagation(); }} className="flex items-center gap-2 px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-            <MessageSquare size={18} /> Chat
-        </button>
+
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    openConfirmModal(order);
+  }}
+  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+>
+  Confirm & Pay
+</button>
+
+
+             <button
+             onClick={(e) => { e.stopPropagation(); openShippingModal(l.id); }}
+             className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs"
+             >
+             Set Shipping
+             </button>
+             
           </div>
         </div>
       </div>
@@ -815,7 +928,6 @@ const paginatedItems = filtered.slice(
       {/* Product Title */}
       <h2 className="text-2xl font-bold mb-1 capitalize">{selected.title}</h2>
       <p className="text-sm mb-3 first-letter:uppercase">{(selected.description || "").slice(0, 120)}...</p>
-      {selected.dateAdded ? (<div className="mt-1 text-sm text-[#555]">Added: {selected.dateAdded}</div>) : ""}
 
       {/* Store Info */}
 {/* Category + Store block (icon above badge, with shadow) */}
@@ -850,7 +962,7 @@ const paginatedItems = filtered.slice(
       <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
         {selected.storeName && selected.storeName.trim() !== "" 
           ? `${selected.storeName} Store #${selected.storeId}` 
-          : `Store #${selected.storeId.toString().padStart(3, "0")}`}
+          : `Store #${selected.storeId}`}
       </div>
     </div>
   </div>
@@ -858,7 +970,7 @@ const paginatedItems = filtered.slice(
 
       {/* Quantity + Price */}
       <div className="flex justify-between items-center mb-5">
-        <span className="text-sm text-[#555] mt-2 underline">Quantity available: {selected.quantity}</span>
+        <span className="text-sm">Qty: {selected.quantity}</span>
         <span className="text-lg font-semibold flex items-center gap-2">
           {selected.price}
           {TOKEN_LOGOS && TOKEN_LOGOS[selected.paymentToken] ? (
@@ -878,6 +990,16 @@ const paginatedItems = filtered.slice(
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
+        {/* WhatsApp */}
+        <a
+          href={`https://wa.me/?text=I'm interested in ${selected.title}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
+        >
+          <MessageCircle size={18} /> WhatsApp
+        </a>
+
         {/* VeryMarket Chat */}
         <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
           <MessageSquare size={18} /> VeryMarket Chat
@@ -925,6 +1047,13 @@ const paginatedItems = filtered.slice(
           Request
         </button>
 
+        {/* Confirm & Pay */}
+        <button
+          onClick={() => buyerConfirmAndPay(selected.id)}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+        >
+          Confirm & Pay
+        </button>
       </div>
     </div>
   </div>
@@ -1005,6 +1134,28 @@ const paginatedItems = filtered.slice(
   fields={inputConfig?.fields}
   onSubmit={inputConfig?.onSubmit}
 />
+
+{/* set shipping modal */}
+      <ShippingModal
+        isOpen={shippingModalOpen}
+        onClose={() => setShippingModalOpen(false)}
+        onConfirm={sellerSetShipping}
+        orderId={selectedOrderId}
+        darkMode={darkMode}
+      />
+
+ {/* Attach modal to buyerConfirmAndPay */}
+<BuyerConfirmPayModal
+  isOpen={confirmModalOpen}
+  onClose={() => setConfirmModalOpen(false)}
+  orderId={selectedOrder?.id}
+  paymentToken={selectedOrder?.paymentToken}
+  total={selectedOrder?.amount + selectedOrder?.shippingFee}
+  onConfirm={buyerConfirmAndPay}
+  darkMode={darkMode}
+/>
+
+
 
       </div>
     </div>

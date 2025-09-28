@@ -134,6 +134,14 @@ export default function MarketplaceTab({ walletProvider, pushToast, TOKEN_LOGOS,
     { name: "Sports & Fitness", symbol: "🏋️" },
     { name: "Books & Stationery", symbol: "📚" },
     { name: "Toys & Games", symbol: "🧸" },
+    { name: "Phones & Tablets", symbol: "📱" },
+    { name: "Laptops & PCs", symbol: "💻" },
+    { name: "TVs & Displays", symbol: "🖥️" },
+    { name: "Headphones & Audio", symbol: "🎧" },
+    { name: "Smartwatches & Wearables", symbol: "⌚" },
+    { name: "Cameras & Photography", symbol: "📷" },
+    { name: "Gaming Consoles", symbol: "🎮" },
+    { name: "Accessories", symbol: "🔌" },
     { name: "Baby Products", symbol: "🍼" },
     { name: "Groceries & Food", symbol: "🛒" },
     { name: "Beverages", symbol: "🥤" },
@@ -152,7 +160,6 @@ export default function MarketplaceTab({ walletProvider, pushToast, TOKEN_LOGOS,
     { name: "Travel & Luggage", symbol: "✈️" },
     { name: "Gardening & Outdoors", symbol: "🌱" },
     { name: "Energy & Solar", symbol: "🔋" },
-    { name: "Gaming", symbol: "🎮" },
   ];
 
 // sorted categories A–Z
@@ -226,7 +233,7 @@ const handleCategoryKeyDown = (e) => {
       const signer = await provider.getSigner();
       const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
 
-      const dateAdded = new Date().toISOString();
+      const dateAdded = (Math.floor(Date.now() / 1000)).toString();
       const tx = await contract.createListing(
         token,
         parseUnits(price, 18),
