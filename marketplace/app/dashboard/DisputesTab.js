@@ -1,111 +1,234 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function DisputesTab({ act, TOKEN_LOGOS, darkMode }) {
+// Reuse same modal structure but inline here
+function InlineModal({ open, onClose, children }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-lg p-6 text-gray-900 dark:text-gray-100"
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export default function DisputesTab({ pushToast, darkMode }) {
   const { walletProvider } = useWeb3ModalProvider();
-  const { isConnected, address } = useWeb3ModalAccount();
-  const [orders, setOrders] = useState([]);
+  const { address } = useWeb3ModalAccount();
+
+  const [disputes, setDisputes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [refundToBuyer, setRefundToBuyer] = useState("");
+  const [payoutToSeller, setPayoutToSeller] = useState("");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const getContract = async () => {
+    if (!walletProvider) throw new Error("Wallet not connected");
+    const provider = new BrowserProvider(walletProvider);
+    const signer = await provider.getSigner();
+    return new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
+  };
+
+  const fetchDisputes = async () => {
+    try {
+      const contract = await getContract();
+      const openDisputes = await contract.getAllOpenDisputes();
+      setDisputes(openDisputes);
+    } catch (err) {
+      console.error("Failed to fetch disputes:", err);
+    }
+  };
 
   useEffect(() => {
-    if (!isConnected || !address) return;
+    fetchDisputes();
+  }, [walletProvider]);
 
-    async function loadOrders() {
-      try {
-        const provider = new BrowserProvider(walletProvider);
-        const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
-
-        const count = await contract.orderCount();
-        const fetched = [];
-
-        for (let i = 0; i <= count; i++) {
-          const o = await contract.orders(i);
-
-          // Filter ONLY disputed ones (status === 3)
-          if (Number(o.status) === 3) {
-            fetched.push({
-              id: i,
-              buyer: o.buyer,
-              seller: o.seller,
-              listingId: Number(o.listingId),
-              paymentToken: o.paymentToken,
-              amount: o.amount,
-              quantity: Number(o.quantity),
-              status: Number(o.status),
-              createdAt: Number(o.createdAt),
-            });
-          }
-        }
-
-        setOrders(fetched);
-      } catch (err) {
-        console.error("Error loading orders:", err);
-      }
+  const handleResolve = async () => {
+    if (!refundToBuyer || !payoutToSeller) {
+      return pushToast("Error", "Both fields are required", "error");
     }
 
-    loadOrders();
-  }, [isConnected, address, walletProvider]);
+    try {
+      setLoading(true);
+      const contract = await getContract();
+      const refundWei = parseUnits(refundToBuyer.toString(), 18);
+      const payoutWei = parseUnits(payoutToSeller.toString(), 18);
 
-  if (!isConnected) {
-    return <div className="text-center text-gray-500">Please connect your wallet to view disputed orders.</div>;
+      const tx = await contract.resolveDispute(selectedOrder.id, refundWei, payoutWei);
+      await tx.wait();
+
+      pushToast("Success", "Dispute resolved successfully", "success");
+      setResolveOpen(false);
+      setRefundToBuyer("");
+      setPayoutToSeller("");
+      fetchDisputes();
+    } catch (err) {
+      console.error("Resolve dispute failed:", err);
+      pushToast("Error", "Failed to resolve dispute", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const paginatedDisputes = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return disputes.slice(start, start + itemsPerPage);
+  }, [disputes, currentPage]);
+
+  const totalPages = Math.ceil(disputes.length / itemsPerPage);
+
+  if (!walletProvider) {
+    return (
+      <div
+        className={`p-6 rounded-lg ${
+          darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"
+        }`}
+      >
+        Please connect your wallet to view and resolve disputes.
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {orders.length === 0 ? (
-        <div className="text-center text-gray-500">No disputed orders found.</div>
-      ) : (
-        orders.map(o => {
-          const amt = formatUnits(o.amount, 18);
-          const qty = o.quantity || 1;
-          const token = TOKEN_LOGOS[o.paymentToken?.toLowerCase()] || { logo: "/logos/default.svg", name: "UNKNOWN" };
-          const bg = darkMode ? "bg-gray-800" : "bg-white";
-          const text = darkMode ? "text-gray-200" : "text-gray-900";
-          const subText = darkMode ? "text-gray-400" : "text-gray-600";
+    <div className={`p-6 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
+      <h1 className="text-xl font-bold mb-4">Disputes</h1>
 
-          return (
-            <div key={o.id} className={`p-4 ${bg} rounded-xl shadow flex flex-col gap-2`}>
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className={`text-sm font-medium ${text}`}>Order #{o.id} (Disputed)</div>
-                  <div className={`text-xs ${subText}`}>
-                    Buyer: {o.buyer} • Seller: {o.seller} • Qty: {qty}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <img src={token.logo} className="w-6 h-6" />
-                  <span className="font-bold">{amt} {token.name}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 flex-wrap mt-2">
-                {[0, 2500, 5000, 7500, 10000].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => act(o.id, "resolveDispute", p)}
-                    className="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                  >
-                    {p / 100}% to Buyer
-                  </button>
-                ))}
+      {disputes.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400 text-center">No disputes found.</p>
+      ) : (
+        <>
+          <AnimatePresence>
+            {paginatedDisputes.map((order, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25 }}
+                className="p-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow mb-3"
+              >
+                <p>
+                  <span className="font-semibold">Order ID:</span> {order.id.toString()}
+                </p>
+                <p>
+                  <span className="font-semibold">Buyer:</span> {order.buyer}
+                </p>
+                <p>
+                  <span className="font-semibold">Seller:</span> {order.seller}
+                </p>
+                <p>
+                  <span className="font-semibold">Amount:</span> {formatUnits(order.amount, 18)} TOKEN
+                </p>
+                <p>
+                  <span className="font-semibold">Shipping Fee:</span>{" "}
+                  {formatUnits(order.shippingFee, 18)} TOKEN
+                </p>
+
                 <button
-                  onClick={() => act(o.id, "refundBuyer")}
-                  className="px-3 py-1 rounded bg-amber-600 text-white hover:bg-amber-700"
+                  className="mt-3 px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
+                  onClick={() => {
+                    setSelectedOrder(order);
+                    setResolveOpen(true);
+                  }}
                 >
-                  Refund Buyer
+                  Resolve Dispute
                 </button>
-                <button
-                  onClick={() => act(o.id, "releaseToSeller")}
-                  className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
-                >
-                  Release to Seller
-                </button>
-              </div>
-            </div>
-          );
-        })
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Pagination */}
+          <div className="flex justify-center items-center gap-3 mt-6">
+            <button
+              className="flex items-center gap-1 px-3 py-2 border rounded disabled:opacity-50 dark:border-gray-600"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+            >
+              <ChevronLeft className="w-4 h-4" /> Prev
+            </button>
+
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              className="flex items-center gap-1 px-3 py-2 border rounded disabled:opacity-50 dark:border-gray-600"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </>
       )}
+
+      {/* Modal */}
+      <InlineModal open={resolveOpen} onClose={() => setResolveOpen(false)}>
+        <h2 className="text-lg font-semibold mb-4">
+          Resolve Dispute - Order #{selectedOrder?.id?.toString()}
+        </h2>
+
+        <label className="block text-sm mb-2">Refund to Buyer</label>
+        <input
+          type="number"
+          step="0.0001"
+          placeholder="e.g. 0.5"
+          value={refundToBuyer}
+          onChange={(e) => setRefundToBuyer(e.target.value)}
+          className="w-full border rounded px-3 py-2 mb-4 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+        />
+
+        <label className="block text-sm mb-2">Payout to Seller</label>
+        <input
+          type="number"
+          step="0.0001"
+          placeholder="e.g. 1.0"
+          value={payoutToSeller}
+          onChange={(e) => setPayoutToSeller(e.target.value)}
+          className="w-full border rounded px-3 py-2 mb-4 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+        />
+
+        <button
+          onClick={handleResolve}
+          disabled={loading}
+          className="w-full px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
+        >
+          {loading ? "Processing..." : "Submit Resolution"}
+        </button>
+      </InlineModal>
     </div>
   );
 }

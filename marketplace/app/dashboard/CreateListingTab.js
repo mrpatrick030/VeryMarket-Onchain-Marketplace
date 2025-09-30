@@ -313,7 +313,9 @@ const handleTokenKeyDown = (e) => {
   }
 };
 
-
+  if (!walletProvider) {
+    return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to create listings and store, and update store.</div>;
+  }
 
   return (
     <div className={`p-6 ${bg} rounded-xl shadow-lg flex flex-col gap-6 md:max-w-2xl`}>

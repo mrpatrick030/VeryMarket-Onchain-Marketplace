@@ -1,9 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import {
-  useWeb3ModalProvider,
-  useWeb3ModalAccount,
-} from "@web3modal/ethers/react";
+import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder } from "lucide-react";
 
@@ -11,6 +8,7 @@ import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
 import InputModal from "./InputModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 
 export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
@@ -45,7 +43,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
         const c = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
         setContract(c);
       } catch (err) {
-        console.error("Contract init err", err);
+        console.log("Contract init err", err);
       }
     };
     init();
@@ -97,28 +95,41 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     try {
       const activeListings = await contract.getActiveListings();
       const formatted = activeListings.map((l, i) => ({
-        id: i + 1,
+        id: Number(l.id),
         title: l.title,
         description: l.description,
         storeId: Intl.NumberFormat().format(Number(l.storeId)),
         category: l.category,
         price: Number(formatUnits(l.price, 18)),
         quantity: Number(l.quantity),
+        initialQuantity:Number(l.initialQuantity),
         seller: l.seller,
+        active: l.active,
         paymentToken: l.paymentToken,
         uri: l.uri,
-        dateAdded: Number(l.dateAdded) ? new Date(Number(l.dateAdded) * 1000).toLocaleString() : "",
+        dateAdded: Number(l.dateAdded) ? Number(l.dateAdded) : "",
       }));
       setListings(formatted);
       setFiltered(formatted);
     } catch (err) {
-      console.error("Error fetching listings:", err);
+      console.log("Error fetching listings:", err);
     }
   };
 
   useEffect(() => {
     loadActiveListings();
   }, [contract]);
+
+    //pagination
+const ITEMS_PER_PAGE = 3; // adjust per your grid
+const [currentPage, setCurrentPage] = useState(1);
+// Calculate pagination
+const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+const paginatedItems = filtered.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
+
 
   // ---------------- FILTER + SORT ----------------
   useEffect(() => {
@@ -182,7 +193,7 @@ const categories = useMemo(() => ["All", ...CATEGORIES.map((c) => c.name)], []);
   const [loadingAction, setLoadingAction] = useState(false);
 
 const openEditModal = async (listingId) => {
-  if (!contract) return alert("Connect wallet first");
+  if (!contract) return pushToast("Connect wallet first");
   try {
     const onChain = await contract.getListing(listingId);
 
@@ -196,8 +207,8 @@ const openEditModal = async (listingId) => {
 
     setEditModalOpen(true);
   } catch (err) {
-    console.error("getListing err", err);
-    alert("Error loading listing for edit");
+    console.log("getListing err", err);
+    pushToast("Error loading listing for edit");
   }
 };
 
@@ -224,7 +235,7 @@ const updateListing = async (listingId, form) => {
     pushToast("✅ Listing updated successfully!");
     setEditModalOpen(false);
   } catch (err) {
-    console.error("Update error:", err);
+    console.log("Update error:", err);
     pushToast("❌ Failed to update listing", "error");
   } finally {
     setLoadingAction(false);
@@ -246,7 +257,7 @@ const deactivateListing = (id) => {
         pushToast("success", "Listing deactivated");
         await loadActiveListings();
       } catch (err) {
-        console.error("deactivateListing err", err);
+        console.log("deactivateListing err", err);
         pushToast("error", "Error deactivating listing");
       } finally {
         setLoadingAction(false);
@@ -270,7 +281,7 @@ const cancelListingIfNoSales = (id) => {
         pushToast("success", "Listing cancelled");
         await loadActiveListings();
       } catch (err) {
-        console.error("cancelListingIfNoSales err", err);
+        console.log("cancelListingIfNoSales err", err);
         pushToast("error", "Error cancelling listing (maybe it has sales)");
       } finally {
         setLoadingAction(false);
@@ -314,7 +325,7 @@ const createOrderRequest = (id) => {
   if (!contract) return pushToast("error", "Connect wallet first");
 
   askInput(
-    "Create a request",
+    "Create an order request",
     [
       { name: "quantity", label: "Quantity", type: "number", placeholder: "Enter quantity" },
       { name: "location", label: "Delivery Location", type: "text", placeholder: "Enter location" },
@@ -330,10 +341,10 @@ const createOrderRequest = (id) => {
         const tx = await contract.createOrderRequest(id, quantity, location);
         await tx.wait();
 
-        pushToast("success", "Order request created");
+        pushToast("success!" + " " + "Order request created");
         await loadActiveListings();
       } catch (err) {
-        console.error("createOrderRequest error", err);
+        console.log("createOrderRequest error", err);
         pushToast("error", "Error creating order request");
       } finally {
         setLoadingAction(false);
@@ -346,46 +357,146 @@ const createOrderRequest = (id) => {
 
 
   // Fetch listings for Seller Profile
-  useEffect(() => {
-    const fetchSellerListings = async () => {
-      if (!contract || !profileSeller) return;
-      setLoading(true);
-      try {
-        const allListings = await contract.getActiveListings();
-        const formatted = allListings
-          .map((l, i) => ({
-            id: i + 1,
-            title: l.title,
-            description: l.description,
-            storeId: Number(l.storeId),
-            category: l.category,
-            price: Number(formatUnits(l.price, 18)),
-            quantity: Number(l.quantity),
-            seller: l.seller,
-            paymentToken: l.paymentToken,
-            uri: l.uri,
-            dateAdded: Number(l.dateAdded) * 1000,
-          }))
-          .filter((l) => l.seller.toLowerCase() === profileSeller.toLowerCase());
-        setListings(formatted);
-      } catch (err) {
-        console.error("Error fetching seller listings:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSellerListings();
-  }, [contract, profileSeller]);
+  // --- Inside your ListingsTab component ---
+const [currentPageOfSeller, setCurrentPageOfSeller] = useState(1);
+const [itemsPerPage] = useState(3);
 
-  //pagination
-const ITEMS_PER_PAGE = 5; // adjust per your grid
-const [currentPage, setCurrentPage] = useState(1);
-// Calculate pagination
-const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-const paginatedItems = filtered.slice(
-  (currentPage - 1) * ITEMS_PER_PAGE,
-  currentPage * ITEMS_PER_PAGE
-);
+// --- Fetch seller listings ---
+useEffect(() => {
+  const fetchSellerListings = async () => {
+    if (!contract || !profileSeller) return;
+    setLoading(true);
+    try {
+      const allListings = await contract.getActiveListings();
+      const formatted = allListings
+        .map((l, i) => ({
+          id: Number(l.id),
+          title: l.title,
+          description: l.description,
+          storeId: Intl.NumberFormat().format(Number(l.storeId)),
+          category: l.category,
+          price: Number(formatUnits(l.price, 18)),
+          quantity: Number(l.quantity),
+          initialQuantity:Number(l.initialQuantity),
+          seller: l.seller,
+          active: l.active,
+          paymentToken: l.paymentToken,
+          uri: l.uri,
+          dateAdded: Number(l.dateAdded) ? Number(l.dateAdded) : "",
+        }))
+      .filter((l) => l.seller.toLowerCase() === profileSeller.toLowerCase())
+      .sort((a, b) => b.dateAdded - a.dateAdded);
+      setListings(formatted);
+      setCurrentPageOfSeller(1); // Reset pagination whenever new seller opens
+    } catch (err) {
+      console.log("Error fetching seller listings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchSellerListings();
+}, [contract, profileSeller]);
+
+// --- Pagination helpers ---
+const indexOfLastItem = currentPageOfSeller * itemsPerPage;
+const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+const paginatedItemsOfSeller = listings.slice(indexOfFirstItem, indexOfLastItem);
+const totalPagesOfSeller = Math.ceil(listings.length / itemsPerPage);
+
+const goToNextPage = () => {
+  if (currentPageOfSeller < totalPagesOfSeller) setCurrentPageOfSeller((prev) => prev + 1);
+};
+const goToPrevPage = () => {
+  if (currentPageOfSeller > 1) setCurrentPageOfSeller((prev) => prev - 1);
+};
+const goToPage = (pageNumber) => {
+  if (pageNumber >= 1 && pageNumber <= totalPagesOfSeller) {
+    setCurrentPageOfSeller(pageNumber);
+  }
+};
+
+
+// State for store details
+const [store, setStore] = useState(null);
+const [loadingStore, setLoadingStore] = useState(false);
+
+// Fetch store details
+useEffect(() => {
+  const fetchStore = async () => {
+    if (!contract || !profileSeller) return;
+    setLoadingStore(true);
+    try {
+      const s = await contract.getStoreByAddress(profileSeller); // <-- assuming contract exposes this
+      const formattedStore = {
+        id: Number(s.id),
+        owner: s.owner,
+        name: s.name,
+        description: s.description,
+        location: s.location,
+        phoneNumber: s.phoneNumber,
+        image: s.image,
+        positiveRatings: Number(s.positiveRatings),
+        negativeRatings: Number(s.negativeRatings),
+        exists: s.exists,
+      };
+      setStore(formattedStore);
+    } catch (err) {
+      console.log("Error fetching store:", err);
+      setStore(null);
+    } finally {
+      setLoadingStore(false);
+    }
+  };
+
+  fetchStore();
+}, [contract, profileSeller]);
+
+
+//for chat with store owner
+  const [showToast, setShowToast] = useState(false);
+  const handleChatClick = () => {
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2500);
+  };
+
+
+  //for store exists button
+  const [myStore, setMyStore] = useState(null);
+  const [loadingMyStore, setLoadingMyStore] = useState(false);
+
+  useEffect(() => {
+  const fetchMyStore = async () => {
+    if (!contract || !address) return;
+    setLoadingMyStore(true);
+    try {
+      const s = await contract.getStoreByAddress(address);
+      const formattedStore = {
+        id: Number(s.id),
+        owner: s.owner,
+        name: s.name,
+        description: s.description,
+        location: s.location,
+        phoneNumber: s.phoneNumber,
+        image: s.image,
+        positiveRatings: Number(s.positiveRatings),
+        negativeRatings: Number(s.negativeRatings),
+        exists: s.exists,
+      };
+      setMyStore(formattedStore);
+    } catch (err) {
+      console.log("Error fetching connected wallet store:", err);
+      setMyStore(null);
+    } finally {
+      setLoadingMyStore(false);
+    }
+  };
+
+  fetchMyStore();
+}, [contract, address]);
+
+  if (!walletProvider) {
+    return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view listings.</div>;
+  }
 
 
   // ---------------- RENDER ----------------
@@ -532,12 +643,35 @@ const paginatedItems = filtered.slice(
     </div>
   </div>
 
-  {/* Product Grid */}
+  {/* View Your Listings Button */}
+{myStore?.exists && myStore?.owner?.toLowerCase() === address?.toLowerCase() && (
+  <div className="mb-6">
+    <button
+      onClick={() => setProfileSeller(address)}
+      className={`flex items-center gap-2 px-4 py-2 rounded-full shadow transition
+        ${darkMode ? "bg-indigo-700 hover:bg-indigo-600 text-white" : "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"}`}
+    >
+      <UserCircle size={18} /> View your Listings
+    </button>
+  </div>
+)}
+
+
+
+{/* Product Grid */}
 {!profileSeller && (
-  <div className={`grid ${gridClass} gap-6`}>
-    {paginatedItems.map((l) => (
-      <div
+  <motion.div
+    layout
+    className={`grid ${gridClass} gap-6`}
+  >
+    {filtered.length === 0 && (
+    <p className="text-gray-500 text-center mt-6">No listings found.</p>)}
+    {paginatedItems.map((l, idx) => (
+      <motion.div
         key={l.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 * idx, duration: 0.3, ease: "easeInOut" }}
         className={`border rounded-xl shadow-md overflow-hidden flex flex-col transition hover:shadow-lg cursor-pointer
           ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-200 text-gray-900"}`}
         onClick={() => setSelected(l)}
@@ -546,126 +680,142 @@ const paginatedItems = filtered.slice(
         <img
           src={l.uri}
           alt={l.title}
-          className="h-44 object-cover w-full"
+          className="h-50 object-cover w-full"
         />
 
         {/* Content */}
         <div className="p-4 flex flex-col flex-grow">
           {/* Title + Excerpt */}
           <h3 className="font-bold text-lg mb-1 truncate capitalize">{l.title}</h3>
-          {l.dateAdded ? (<div className="mt-1 text-sm text-[#555]">Added: {l.dateAdded}</div>) : ""}
-          {/* Store name or fallback */}
+          {l.dateAdded && (
+            <div className="mt-1 text-sm text-gray-400 dark:text-gray-500">
+              Added: {new Date(Number(l.dateAdded) * 1000).toLocaleString()}
+            </div>
+          )}
 
-           {/* Category + Store block (icon above badge, with shadow) */}
-<div className="mt-2 flex items-start gap-3">
-  {/* Icon circle (folder) */}
-  <div
-    className={`flex items-center justify-center w-10 h-10 rounded-lg shadow-md flex-shrink-0
-      ${darkMode ? "bg-indigo-900/40" : "bg-indigo-50"}
-    `}
-    aria-hidden="true"
-    title={l.category || "Uncategorized"}
-  >
-    <Folder className={`w-5 h-5 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`} />
-  </div>
+          {/* Category + Store block */}
+          <div className="mt-2 flex items-start gap-3">
+            <div
+              className={`flex items-center justify-center w-10 h-10 rounded-lg shadow-md flex-shrink-0
+                ${darkMode ? "bg-indigo-900/40" : "bg-indigo-50"}`}
+              aria-hidden="true"
+              title={l.category || "Uncategorized"}
+            >
+              <Folder className={`w-5 h-5 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block text-xs font-semibold px-3 py-1 rounded-full shadow-sm truncate
+                    ${darkMode ? "bg-indigo-800/60 text-indigo-200" : "bg-indigo-100 text-indigo-700"}`}
+                  style={{ boxShadow: darkMode ? "0 6px 18px rgba(15,23,42,0.35)" : "0 6px 18px rgba(79,70,229,0.06)" }}
+                >
+                  {(l.category || "Uncategorized").toString().replace(/^\w/, (c) => c.toUpperCase())}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                  {l.storeName?.trim() ? l.storeName : `Store #${l.storeId.toString().padStart(3, "0")}`}
+                </div>
+              </div>
+            </div>
+          </div>
 
-  {/* Text column: badge + store name/id */}
-  <div className="flex-1 min-w-0">
-    {/* Category badge (pill) */}
-    <div className="flex items-center gap-2">
-      <span
-        className={`inline-block text-xs font-semibold px-3 py-1 rounded-full shadow-sm truncate
-          ${darkMode ? "bg-indigo-800/60 text-indigo-200" : "bg-indigo-100 text-indigo-700"}
-        `}
-        style={{ boxShadow: darkMode ? "0 6px 18px rgba(15,23,42,0.35)" : "0 6px 18px rgba(79,70,229,0.06)" }}
-      >
-        {/* ensure first letter uppercase */}
-        {(l.category || "Uncategorized").toString().replace(/^\w/, (c) => c.toUpperCase())}
-      </span>
-    </div>
-
-    {/* Store name (highlighted) and Store ID */}
-    <div className="mt-1 flex items-center justify-between">
-      <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-       {l.storeName && l.storeName.trim() !== "" ? l.storeName : `Store #${l.storeId.toString().padStart(3, "0")}`}
-      </div>
-    </div>
-  </div>
-</div>
-
-
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 first-letter:uppercase my-2">
+          <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} line-clamp-2 first-letter:uppercase my-2`}>
             {l.description || "No description available"}
           </p>
 
-          {/* Store Info */}
-          {l.storeName && (
-            <div className="text-xs italic text-gray-500 dark:text-gray-400 mb-2">
-              {l.storeName}
-            </div>
-          )}
-     
-            {/* Quantity + Price */}
-<div className="flex justify-between items-center mt-auto">
-  <span className="text-xs text-gray-600 underline dark:text-gray-400">
-    Quantity available: {l.quantity}
-  </span>
+{/* Quantity + Price */}
+<div className="flex justify-between items-center gap-2 mt-auto">
+  {/* Status Badge */}
+  <div>
+    {l.active === true && l.quantity > 0 ? (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+        Active • {l.quantity} left out of {l.initialQuantity}
+      </span>
+    ) : !l.active === true ? (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+        Inactive
+      </span>
+    ) : (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+        Sold Out • {l.initialQuantity} listed
+      </span>
+    )}
+  </div>
+
+  {/* Price + Token */}
   <span className="text-base font-semibold flex items-center gap-2">
     {l.price}
-    {TOKEN_LOGOS && TOKEN_LOGOS[l.paymentToken] ? (
+    {TOKEN_LOGOS?.[l.paymentToken] ? (
       <span className="flex items-center gap-1">
-       {TOKEN_LOGOS[l.paymentToken].name}
+        {TOKEN_LOGOS[l.paymentToken].name}
         <img
           src={TOKEN_LOGOS[l.paymentToken].logo}
           alt=""
           className="w-4 h-4 inline-block"
         />
       </span>
-    ) : (
-      l.paymentToken
-    )}
+    ) : l.paymentToken}
   </span>
 </div>
 
 
-          {/* Actions */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={(e) => { e.stopPropagation(); openEditModal(l.id); }}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs"
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); deactivateListing(l.id); }}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs"
-            >
-              Deactivate
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); cancelListingIfNoSales(l.id); }}
-              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
-            >
-              Cancel
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); createOrderRequest(l.id); }}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
-            >
-              Request
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); }} className="flex items-center gap-2 px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-            <MessageSquare size={18} /> Chat
+{/* Actions */}
+<div className="mt-4 flex flex-wrap gap-2">
+  {/* Seller Actions */}
+  {l.seller?.toLowerCase() === address?.toLowerCase() && (
+    <>
+      {/* Edit if active */}
+      {l.active && (
+        <button
+          onClick={(e) => { e.stopPropagation(); openEditModal(l.id); }}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs"
+        >
+          Edit
         </button>
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
+      )}
+
+      {/* Deactivate if active */}
+      {l.active && (
+        <button
+          onClick={(e) => { e.stopPropagation(); deactivateListing(l.id); }}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs"
+        >
+          Deactivate
+        </button>
+      )}
+
+      {/* Cancel if active and no sales yet */}
+      {l.active && Number(l.initialQuantity - l.quantity || 0) === 0 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); cancelListingIfNoSales(l.id); }}
+          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+        >
+          Cancel
+        </button>
+      )}
+    </>
   )}
+
+  {/* Buyer Actions */}
+  {l.seller?.toLowerCase() !== address?.toLowerCase() && l.active && l.quantity > 0 && (
+    <button
+      onClick={(e) => { e.stopPropagation(); createOrderRequest(l.id); }}
+      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+    >
+      Request
+    </button>
+  )}
+</div>
+
+
+        </div>
+      </motion.div>
+    ))}
+  </motion.div>
+)}
+
 {/* Pagination */}
 {totalPages > 1 && (
   <div className="mt-20 flex justify-center items-center gap-2 flex-wrap">
@@ -675,8 +825,8 @@ const paginatedItems = filtered.slice(
       disabled={currentPage === 1}
       className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
         ${darkMode
-          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
-          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
         }`}
     >
       Prev
@@ -705,8 +855,8 @@ const paginatedItems = filtered.slice(
       disabled={currentPage === totalPages}
       className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
         ${darkMode
-          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
-          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
         }`}
     >
       Next
@@ -719,67 +869,98 @@ const paginatedItems = filtered.slice(
 
         {/* Edit Modal */}
 {editModalOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    {/* Overlay */}
-    <div
-      className="absolute inset-0 bg-black/50"
-      onClick={() => setEditModalOpen(false)}
-    />
-
-    {/* Modal content */}
-    <div className="relative bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl w-full max-w-xl">
-      <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
-        ✏️ <span className="text-yellow-600 dark:text-yellow-400">Edit Listing #{editingListingId}</span>
-      </h3>
-
-      <div className="grid grid-cols-1 gap-4">
-        {/* Price */}
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            Price
-          </label>
-          <input
-            type="number"
-            step="0.0001"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
-          />
-        </div>
-
-        {/* Quantity */}
-        <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-            Quantity
-          </label>
-          <input
-            type="number"
-            value={form.quantity}
-            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-6 flex justify-end gap-3">
-        <button
+  <AnimatePresence>
+    {editModalOpen && (
+      <motion.div
+        className="fixed inset-0 z-100 flex items-center justify-center p-4 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        {/* Overlay */}
+        <motion.div
+          className="absolute inset-0 bg-black/50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={() => setEditModalOpen(false)}
-          className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+        />
+
+        {/* Modal content */}
+        <motion.div
+          className="relative bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl w-full max-w-xl"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
         >
-          Cancel
-        </button>
-        <button
-          onClick={() => updateListing(editingListingId, form)}
-          disabled={loadingAction}
-          className="px-4 py-2 rounded-md bg-yellow-600 text-white hover:bg-yellow-500 disabled:opacity-50 transition"
-        >
-          {loadingAction ? "Updating..." : "Update"}
-        </button>
-      </div>
-    </div>
-  </div>
+          {/* Close Button */}
+          <button
+            className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:hover:text-gray-300"
+            onClick={() => setEditModalOpen(false)}
+          >
+            <X size={20} />
+          </button>
+
+          {/* Title */}
+          <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            ✏️{" "}
+            <span className="text-yellow-600 dark:text-yellow-400">
+              Edit Listing #{editingListingId}
+            </span>
+          </h3>
+
+          <div className="grid grid-cols-1 gap-4">
+            {/* Price */}
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Price
+              </label>
+              <input
+                type="number"
+                step="0.0001"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                Quantity
+              </label>
+              <input
+                type="number"
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:text-white border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setEditModalOpen(false)}
+              className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => updateListing(editingListingId, form)}
+              disabled={loadingAction}
+              className="px-4 py-2 rounded-md bg-yellow-600 text-white hover:bg-yellow-500 disabled:opacity-50 transition"
+            >
+              {loadingAction ? "Updating..." : "Update"}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
 )}
+
 
 
 
@@ -788,8 +969,8 @@ const paginatedItems = filtered.slice(
     <div className={`${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>
 
       {/* ---------------- SINGLE PRODUCT MODAL ---------------- */}
-{selected && !profileSeller && (
-  <div className="fixed p-6 inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+   {selected && !profileSeller && (
+    <div className="fixed p-6 inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div
       className={`p-6 rounded-2xl w-full max-w-2xl relative overflow-y-auto max-h-screen shadow-xl
         ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}
@@ -809,14 +990,13 @@ const paginatedItems = filtered.slice(
       <img
         src={selected.uri}
         alt=""
-        className="h-60 object-cover rounded-lg mb-4 w-full shadow-sm"
+        className="object-cover rounded-lg mb-4 w-full shadow-sm"
       />
 
       {/* Product Title */}
       <h2 className="text-2xl font-bold mb-1 capitalize">{selected.title}</h2>
-      <p className="text-sm mb-3 first-letter:uppercase">{(selected.description || "").slice(0, 120)}...</p>
-      {selected.dateAdded ? (<div className="mt-1 text-sm text-[#555]">Added: {selected.dateAdded}</div>) : ""}
-
+      <p className={`text-sm mb-3 first-letter:uppercase ${darkMode ? "text-gray-400" : "text-gray-700"}`}>{(selected.description || "")}</p>
+      {selected.dateAdded ? (<div className="mt-1 text-sm text-gray-400 dark:text-gray-500">Added: {new Date(Number(selected.dateAdded) * 1000).toLocaleString()}</div>) : ""}
       {/* Store Info */}
 {/* Category + Store block (icon above badge, with shadow) */}
 <div className="mt-4 flex items-start gap-3">
@@ -856,136 +1036,495 @@ const paginatedItems = filtered.slice(
   </div>
 </div>
 
-      {/* Quantity + Price */}
-      <div className="flex justify-between items-center mb-5">
-        <span className="text-sm text-[#555] mt-2 underline">Quantity available: {selected.quantity}</span>
-        <span className="text-lg font-semibold flex items-center gap-2">
-          {selected.price}
-          {TOKEN_LOGOS && TOKEN_LOGOS[selected.paymentToken] ? (
-            <span className="flex items-center gap-1">
-              {TOKEN_LOGOS[selected.paymentToken].name}
-              <img
-                src={TOKEN_LOGOS[selected.paymentToken].logo}
-                alt=""
-                className="w-5 h-5"
-              />
-            </span>
-          ) : (
-            selected.paymentToken
-          )}
+
+<div className="flex flex-col md:flex-row md:justify-between md:items-center mt-2 mb-5 gap-2">
+  {/* Status Badge */}
+  <motion.div
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.4, ease: "easeOut" }}
+  >
+    {selected.active && selected.quantity > 0 ? (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+        Active • {selected.quantity} left out of {selected.initialQuantity}
+      </span>
+    ) : !selected.active ? (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+        Inactive
+      </span>
+    ) : (
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+        Sold Out • {selected.initialQuantity} listed
+      </span>
+    )}
+  </motion.div>
+
+  {/* Quantity + Price */}
+  <motion.div
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.4, ease: "easeOut" }}
+    className="flex justify-end"
+  >
+    <span className="text-lg mt-2 font-semibold flex gap-2 items-center">
+      {selected.price}
+      {TOKEN_LOGOS && TOKEN_LOGOS[selected.paymentToken] ? (
+        <span className="flex items-center gap-1">
+          {TOKEN_LOGOS[selected.paymentToken].name}
+          <img
+            src={TOKEN_LOGOS[selected.paymentToken].logo}
+            alt=""
+            className="w-5 h-5"
+          />
         </span>
-      </div>
+      ) : (
+        selected.paymentToken
+      )}
+    </span>
+  </motion.div>
+</div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3">
-        {/* VeryMarket Chat */}
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-          <MessageSquare size={18} /> VeryMarket Chat
-        </button>
 
-        {/* View Seller Profile */}
-        <button
-          onClick={() => setProfileSeller(selected.seller)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors
-            ${darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-200 hover:bg-gray-300 text-gray-900"}
-          `}
-        >
-          <UserCircle size={18} /> View Seller Profile
-        </button>
 
-        {/* Edit */}
-        <button
-          onClick={() => openEditModal(selected.id)}
-          className="px-4 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
-        >
-          Edit
-        </button>
+{/* Action Buttons */}
+<motion.div 
+  className="flex flex-wrap gap-3 mt-2"
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.3 }}
+>
+  {/* View Seller Profile */}
+  <motion.button
+    whileTap={{ scale: 0.95 }}
+    onClick={() => setProfileSeller(selected.seller)}
+    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors
+      ${darkMode 
+        ? "bg-gray-700 hover:bg-gray-600 text-gray-200" 
+        : "bg-gray-200 hover:bg-gray-300 text-gray-900"}
+    `}
+  >
+    <UserCircle size={18} /> {selected.seller?.toLowerCase() === address?.toLowerCase()
+      ? "View your Profile"
+      : "View Seller Profile"}
+  </motion.button>
 
-        {/* Deactivate */}
-        <button
-          onClick={() => deactivateListing(selected.id)}
-          className="px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors"
-        >
-          Deactivate
-        </button>
+  {/* Seller Actions */}
+  {selected.seller?.toLowerCase() === address?.toLowerCase() && (
+    <>
+      {selected.active && (
+        <>
+          {/* Edit */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => openEditModal(selected.id)}
+            className="px-4 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 transition-colors disabled:opacity-50"
+          >
+            Edit
+          </motion.button>
 
-        {/* Cancel */}
-        <button
+          {/* Deactivate */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => deactivateListing(selected.id)}
+            className="px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            Deactivate
+          </motion.button>
+        </>
+      )}
+
+      {/* Cancel (only if no sales yet) */}
+      {selected.active && Number(selected.sold || 0) === 0 && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
           onClick={() => cancelListingIfNoSales(selected.id)}
-          className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+          className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
         >
           Cancel
-        </button>
+        </motion.button>
+      )}
+    </>
+  )}
 
-        {/* Request */}
-        <button
-          onClick={() => createOrderRequest(selected.id)}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-        >
-          Request
-        </button>
+  {/* Buyer Actions */}
+  {selected.seller?.toLowerCase() !== address?.toLowerCase() &&
+    selected.status === 1 &&
+    selected.quantity > 0 && (
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => createOrderRequest(selected.id)}
+        className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+      >
+        Request
+      </motion.button>
+  )}
+</motion.div>
 
-      </div>
+      
     </div>
   </div>
 )}
 
 
-      {/* ---------------- SELLER PROFILE MODAL ---------------- */}
-      {profileSeller && (
-        <div className="fixed p-6 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-lg shadow p-6 w-full max-w-4xl max-h-screen overflow-y-auto relative
-            ${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-900"}
-          `}>
-            {/* Close Button */}
-            <button
-              onClick={() => setProfileSeller(null)}
-              className={`absolute top-2 right-2 ${darkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-black"}`}
+
+{/* ---------------- SELLER PROFILE MODAL ---------------- */}
+{profileSeller && store?.exists && (
+        <AnimatePresence>
+          <motion.div
+            key="seller-profile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setProfileSeller(null);
+            }}
+          >
+            <motion.div
+              key="seller-profile-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className={`relative rounded-xl shadow-lg w-full max-w-5xl max-h-screen overflow-auto mt-[2cm]
+                ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}
+              `}
             >
-              <X size={24} />
-            </button>
+              {/* Close Button */}
+              <button
+                onClick={() => setProfileSeller(null)}
+                className={`absolute top-3 right-3 p-2 rounded-full z-50
+                  ${
+                    darkMode
+                      ? "hover:bg-gray-800 text-gray-400 hover:text-white"
+                      : "hover:bg-gray-200 text-gray-600 hover:text-black"
+                  }
+                `}
+              >
+                <X size={22} />
+              </button>
 
-            {/* Header */}
-            <h1 className="text-2xl font-bold mb-2">Seller Profile</h1>
-            <p className={`break-words mb-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-              Address: <span className="font-mono">{profileSeller}</span>
-            </p>
-
-            {loading ? (
-              <p>Loading seller listings...</p>
-            ) : listings.length === 0 ? (
-              <p className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>No active listings found for this seller.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {listings.map((l) => (
-                  <div
-                    key={l.id}
-                    className={`border rounded-lg shadow-sm p-3 flex flex-col
-                      ${darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"}
-                    `}
+              {/* Loading Store */}
+              {loadingStore ? (
+                <div className="p-6 text-center">
+                  <p className="animate-pulse">Fetching store details...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Store Cover */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="relative w-full h-70 rounded-t-xl overflow-hidden"
                   >
-                    <img src={l.uri} alt={l.title} className="h-40 object-cover rounded mb-2" />
-                    <h3 className="font-bold">{l.title}</h3>
-                    <p className={`text-sm mb-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                      {(l.description || "").slice(0, 60)}...
-                    </p>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Store #{l.storeId}</div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Qty: {l.quantity}</div>
-                    <div className="text-sm font-semibold mt-1 flex items-center gap-1">
-                      {l.price}{" "}
-                      {TOKEN_LOGOS && TOKEN_LOGOS[l.paymentToken] ? (
-                        <img src={TOKEN_LOGOS[l.paymentToken]} alt={l.paymentToken} className="w-4 h-4 inline" />
-                      ) : (
-                        l.paymentToken
-                      )}
+                    <img
+                      src={store.image || "/default-cover.jpg"}
+                      alt="Store Cover"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-3 left-4 bg-black/60 text-white px-3 py-1 rounded-lg text-sm">
+                      Store #{store.id.toString().padStart(3, "0")}
                     </div>
+                  </motion.div>
+
+                  {/* Store Info */}
+                  <div className="p-6 border-b dark:border-gray-700">
+                    <h2 className="text-2xl font-bold mb-2">{store.name}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      Wallet:{" "}
+                      <span className="font-mono">
+                        {profileSeller.slice(0, 6)}...{profileSeller.slice(-4)}
+                      </span>
+                    </p>
+                    <p className="mb-3">{store.description}</p>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm"
+                    >
+                      <p>
+                        <span className="font-semibold">📍 Location:</span>{" "}
+                        {store.location}
+                      </p>
+                      <p>
+                        <span className="font-semibold">📞 Phone:</span>{" "}
+                        {store.phoneNumber}
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          👍 Positive Ratings:
+                        </span>{" "}
+                        {store.positiveRatings}
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          👎 Negative Ratings:
+                        </span>{" "}
+                        {store.negativeRatings}
+                      </p>
+                    </motion.div>
+
+                    {/* Chat Button */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="mt-4"
+                    >
+                      <button
+                        onClick={handleChatClick}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow"
+                      >
+                        <MessageSquare size={18} /> {store?.owner?.toLowerCase() === address?.toLowerCase() ? "Chat with Buyers" : "Chat with Store Owner"}
+                      </button>
+                    </motion.div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                </>
+              )}
+
+              {/* Seller Products */}
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Products</h3>
+
+                {loading ? (
+                  <p>Loading seller listings...</p>
+                ) : listings.length === 0 ? (
+                  <p
+                    className={`${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    No active listings found for this seller.
+                  </p>
+                ) : (
+                  <motion.div
+                    layout
+                    className={`grid ${gridClass} gap-6`}
+                  >
+                    <AnimatePresence initial={false}>
+                      {paginatedItemsOfSeller.map((l, idx) => (
+                        <motion.div
+                          key={l.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{
+                            duration: 0.25,
+                            delay: 0.05 * idx,
+                          }}
+                          className={`border cursor-pointer rounded-xl shadow-md overflow-hidden flex flex-col transition hover:shadow-lg
+                            ${
+                              darkMode
+                                ? "bg-gray-800 border-gray-700 text-gray-200"
+                                : "bg-white border-gray-200 text-gray-900"
+                            }`}
+                          onClick={() => {setSelected(l); setProfileSeller(null)}} 
+                        >
+                          {/* Image */}
+                          <img
+                            src={l.uri}
+                            alt={l.title}
+                            className="h-44 object-cover w-full"
+                          />
+
+                          {/* Content */}
+                          <div className="p-4 flex flex-col flex-grow">
+                            <h3 className="font-bold text-lg mb-1 truncate capitalize">
+                              {l.title}
+                            </h3>
+                           {l.dateAdded && (
+                            <div className="mt-1 text-sm text-gray-400 dark:text-gray-500">
+                             Added: {new Date(Number(l.dateAdded) * 1000).toLocaleString()}
+                            </div>
+                             )}
+                            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-700"} line-clamp-2 my-2`}>
+                              {l.description ||
+                                "No description available"}
+                            </p>
+
+                            {/* Quantity + Price */}
+                            <div className="flex justify-between items-center gap-2 mt-auto">
+{/* Status Badge */}
+<div>
+  {l.active && l.quantity > 0 ? (
+    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-green-100 text-green-00 dark:bg-green-900 dark:text-green-300">
+      Active • {l.quantity} left out of {l.initialQuantity}
+    </span>
+  ) : !l.active ? (
+    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+      Inactive
+    </span>
+  ) : (
+    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+      Sold Out • {l.initialQuantity} listed
+    </span>
+  )}
+</div>
+                              <span className="text-base font-semibold flex items-center gap-2">
+                                {l.price}{" "}
+                                {TOKEN_LOGOS &&
+                                TOKEN_LOGOS[l.paymentToken] ? (
+                                  <span className="flex items-center gap-1">
+                                    {TOKEN_LOGOS[l.paymentToken].name}
+                                    <img
+                                      src={
+                                        TOKEN_LOGOS[l.paymentToken].logo
+                                      }
+                                      alt=""
+                                      className="w-4 h-4 inline-block"
+                                    />
+                                  </span>
+                                ) : (
+                                  l.paymentToken
+                                )}
+                              </span>
+                            </div>
+
+
+{/* Actions */}
+<div className="mt-4 flex flex-wrap gap-2">
+  {/* Seller Actions */}
+  {l.seller?.toLowerCase() === address?.toLowerCase() && (
+    <>
+      {l.active && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.3, ease: "easeInOut" }}
+          onClick={(e) => { e.stopPropagation(); openEditModal(l.id); }}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs"
+        >
+          Edit
+        </motion.button>
       )}
+
+      {l.active && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3, ease: "easeInOut" }}
+          onClick={(e) => { e.stopPropagation(); deactivateListing(l.id); }}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs"
+        >
+          Deactivate
+        </motion.button>
+      )}
+
+      {l.active && Number(l.sold || 0) === 0 && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.3, ease: "easeInOut" }}
+          onClick={(e) => { e.stopPropagation(); cancelListingIfNoSales(l.id); }}
+          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs"
+        >
+          Cancel
+        </motion.button>
+      )}
+    </>
+  )}
+
+  {/* Buyer Actions */}
+  {l.seller?.toLowerCase() !== address?.toLowerCase() && l.active && l.quantity > 0 && (
+    <motion.button
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2, duration: 0.3, ease: "easeInOut" }}
+      onClick={(e) => { e.stopPropagation(); createOrderRequest(l.id); }}
+      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+    >
+      Request
+    </motion.button>
+  )}
+</div>
+
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+
+                {/* Pagination */}
+                {totalPagesOfSeller > 1 && (
+                  <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
+                    {/* Prev Button */}
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPageOfSeller === 1}
+                      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                        ${
+                          darkMode
+                            ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        }`}
+                    >
+                      Prev
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from(
+                      { length: totalPagesOfSeller },
+                      (_, i) => i + 1
+                    ).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className={`px-4 py-2 rounded-lg border cursor-pointer font-medium transition-colors
+                          ${
+                            page === currentPageOfSeller
+                              ? "bg-blue-500 border-blue-500 text-white"
+                              : darkMode
+                              ? "border-gray-700 text-gray-200 hover:bg-gray-700"
+                              : "border-gray-300 text-gray-700 hover:bg-gray-200"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={goToNextPage}
+                      disabled={
+                        currentPageOfSeller === totalPagesOfSeller
+                      }
+                      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
+                        ${
+                          darkMode
+                            ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Toast Notification */}
+            <AnimatePresence>
+              {showToast && (
+                <motion.div
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 50 }}
+                  transition={{ duration: 0.3 }}
+                  className="fixed top-8 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg bg-blue-600 text-white text-sm font-medium"
+                >
+                  💬 Chat with Store Owner — Coming Soon!
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      )}
+
     </div>
 
 {/* confirm modal */}

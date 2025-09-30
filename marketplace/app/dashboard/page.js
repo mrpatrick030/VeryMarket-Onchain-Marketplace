@@ -28,7 +28,7 @@ const STATUS = [
   "Requested",
   "ShippingSet",
   "Escrowed",
-  "Shipped",
+  "Shipped", 
   "Disputed",
   "Refunded",
   "Released",
@@ -41,7 +41,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [listings, setListings] = useState([]);
   const [owner, setOwner] = useState("");
-  const [activeTab, setActiveTab] = useState("orders");
+  const [activeTab, setActiveTab] = useState("listings");
   const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -69,7 +69,7 @@ export default function Dashboard() {
       const contractOwner = await contract.owner();
       setOwner(contractOwner.toLowerCase());
     } catch (err) {
-      console.error(err);
+      console.log(err);
     }
   }
 
@@ -84,7 +84,7 @@ export default function Dashboard() {
       const formatted = allListings.map((l, i) => ({ id: i + 1, ...l }));
       setListings(formatted.reverse());
     } catch (err) {
-      console.error(err);
+      console.log(err);
     }
   }
 
@@ -105,7 +105,7 @@ export default function Dashboard() {
       }
       setTokens(updatedTokens);
     } catch (err) {
-      console.error("Error loading tokens:", err);
+      console.log("Error loading tokens:", err);
     }
   }
 
@@ -129,7 +129,7 @@ export default function Dashboard() {
       pushToast(`✅ Action '${fn}' executed for Order #${orderId}`);
       loadOrders();
     } catch (err) {
-      console.error(err);
+      console.log(err);
       pushToast(`❌ Action failed: ${err.message}`, "error");
     } finally {
       setLoading(false);
@@ -185,7 +185,7 @@ export default function Dashboard() {
 
       {/* Toast notifications */}
       <div className="relative">
-        <div className="absolute top-0 right-0 flex flex-col gap-2 z-50">
+        <div className="absolute top-0 right-0 flex flex-col gap-2 z-200">
           {toasts.map((t) => (
             <div key={t.id} className={`px-4 py-2 rounded shadow-lg text-white animate-fadeIn ${t.type === "error" ? "bg-red-600" : "bg-green-600"}`}>
               {t.message}
@@ -195,10 +195,10 @@ export default function Dashboard() {
       </div>
 
       {/* Tabs */}
-      {activeTab === "orders" && <OrdersTab orders={orders} address={address} act={act} TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} />}
+      {activeTab === "orders" && <OrdersTab act={act} TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} darkMode={darkMode} />}
       {activeTab === "listings" && <ListingsTab listings={listings} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
       {activeTab === "create" && <CreateListingTab walletProvider={walletProvider} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
-      {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} act={act} TOKEN_LOGOS={TOKEN_LOGOS} />}
+      {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} act={act} pushToast={pushToast} darkMode={darkMode} TOKEN_LOGOS={TOKEN_LOGOS} />}
     </div>
   );
 }

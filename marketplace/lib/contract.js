@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 // Paste your deployed address & ABI from Remix after deployment
-export const MARKETPLACE_ADDRESS = "0xCFd6E3F72F6Fe1Bf5Eae7f33bd8087550CD97c1A";
+export const MARKETPLACE_ADDRESS = "0x9169082FBEd080A342b8eD13eaFE1Bb87Cd07bD5";
 export const MARKETPLACE_ABI = [
   {
     inputs: [
@@ -965,6 +965,11 @@ export const MARKETPLACE_ABI = [
       {
         components: [
           {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "seller",
             type: "address",
@@ -1040,6 +1045,11 @@ export const MARKETPLACE_ABI = [
       {
         components: [
           {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "seller",
             type: "address",
@@ -1101,6 +1111,101 @@ export const MARKETPLACE_ABI = [
           },
         ],
         internalType: "struct Marketplace.Listing[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getAllOpenDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
         name: "",
         type: "tuple[]",
       },
@@ -1198,6 +1303,11 @@ export const MARKETPLACE_ABI = [
     outputs: [
       {
         components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
           {
             internalType: "address",
             name: "seller",
@@ -1345,6 +1455,11 @@ export const MARKETPLACE_ABI = [
       {
         components: [
           {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "buyer",
             type: "address",
@@ -1440,6 +1555,11 @@ export const MARKETPLACE_ABI = [
     outputs: [
       {
         components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
           {
             internalType: "address",
             name: "buyer",
@@ -1537,6 +1657,11 @@ export const MARKETPLACE_ABI = [
       {
         components: [
           {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "buyer",
             type: "address",
@@ -1632,6 +1757,11 @@ export const MARKETPLACE_ABI = [
     outputs: [
       {
         components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
           {
             internalType: "address",
             name: "buyer",
@@ -1871,6 +2001,11 @@ export const MARKETPLACE_ABI = [
       {
         components: [
           {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "seller",
             type: "address",
@@ -1940,6 +2075,107 @@ export const MARKETPLACE_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+    ],
+    name: "getUserDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "listingCount",
     outputs: [
@@ -1962,6 +2198,11 @@ export const MARKETPLACE_ABI = [
     ],
     name: "listings",
     outputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
       {
         internalType: "address",
         name: "seller",
@@ -2062,6 +2303,11 @@ export const MARKETPLACE_ABI = [
     ],
     name: "orders",
     outputs: [
+      {
+        internalType: "uint256",
+        name: "id",
+        type: "uint256",
+      },
       {
         internalType: "address",
         name: "buyer",
@@ -2264,6 +2510,326 @@ export const MARKETPLACE_ABI = [
       },
     ],
     name: "userOrders",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+const USDC_ABI = [
+  {
+    inputs: [],
+    stateMutability: "nonpayable",
+    type: "constructor",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "spender",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "Approval",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "spender",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "approve",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "mint",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "Mint",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "transfer",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "Transfer",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "transferFrom",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "Withdrawn",
+    type: "event",
+  },
+  {
+    stateMutability: "payable",
+    type: "fallback",
+  },
+  {
+    inputs: [],
+    name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    stateMutability: "payable",
+    type: "receive",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    name: "allowance",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    name: "balanceOf",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "contractBalance",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [
+      {
+        internalType: "uint8",
+        name: "",
+        type: "uint8",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "name",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalSupply",
     outputs: [
       {
         internalType: "uint256",
