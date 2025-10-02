@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
-import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder } from "lucide-react";
+import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, Store } from "lucide-react";
 
 import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
@@ -168,7 +168,7 @@ const paginatedItems = filtered.slice(
   }, [layout]);
 
   // ---------------- CATEGORY LIST ----------------
-const categories = useMemo(() => ["All", ...CATEGORIES.map((c) => c.name)], []);
+  const categories = useMemo(() => ["All", ...CATEGORIES.sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.name)], []);
 
 
 
@@ -259,6 +259,30 @@ const deactivateListing = (id) => {
       } catch (err) {
         console.log("deactivateListing err", err);
         pushToast("error", "Error deactivating listing");
+      } finally {
+        setLoadingAction(false);
+      }
+    }
+  );
+};
+
+// Deactivate listing
+const reactivateListing = (id) => {
+  if (!contract) return pushToast("error", "Connect wallet first");
+
+  askConfirm(
+    "Reactivate Listing",
+    "Are you sure you want to reactivate this listing? It will make this listing to be visible to the marketplace.",
+    async () => {
+      try {
+        setLoadingAction(true);
+        const tx = await contract.reactivateListing(id);
+        await tx.wait();
+        pushToast("success", "Listing reactivated");
+        await loadActiveListings();
+      } catch (err) {
+        console.log("reactivateListing err", err);
+        pushToast("error", "Error reactivating listing");
       } finally {
         setLoadingAction(false);
       }
@@ -367,7 +391,12 @@ useEffect(() => {
     if (!contract || !profileSeller) return;
     setLoading(true);
     try {
-      const allListings = await contract.getActiveListings();
+      let allListings;
+      if (profileSeller.toLowerCase() === address.toLowerCase()){
+       allListings = await contract.getAllListings();}
+      else {
+       allListings = await contract.getActiveListings();
+       }
       const formatted = allListings
         .map((l, i) => ({
           id: Number(l.id),
@@ -715,7 +744,7 @@ useEffect(() => {
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-                  {l.storeName?.trim() ? l.storeName : `Store #${l.storeId.toString().padStart(3, "0")}`}
+                  {l.storeName?.trim() ? l.storeName : `Store ID: 🏬 ${l.storeId.toString().padStart(3, "0")}`}
                 </div>
               </div>
             </div>
@@ -738,7 +767,7 @@ useEffect(() => {
         Inactive
       </span>
     ) : (
-      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/80 dark:text-red-300">
         Sold Out • {l.initialQuantity} listed
       </span>
     )}
@@ -746,7 +775,7 @@ useEffect(() => {
 
   {/* Price + Token */}
   <span className="text-base font-semibold flex items-center gap-2">
-    {l.price}
+    {Intl.NumberFormat().format(l.price)}
     {TOKEN_LOGOS?.[l.paymentToken] ? (
       <span className="flex items-center gap-1">
         {TOKEN_LOGOS[l.paymentToken].name}
@@ -783,6 +812,16 @@ useEffect(() => {
           className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs"
         >
           Deactivate
+        </button>
+      )}
+
+       {/* Reactivate if deactivated */}
+      {l.active === false && (
+        <button
+          onClick={(e) => { e.stopPropagation(); reactivateListing(l.id); }}
+          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+        >
+          Reactivate
         </button>
       )}
 
@@ -1030,7 +1069,7 @@ useEffect(() => {
       <div className={`text-sm font-medium truncate ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
         {selected.storeName && selected.storeName.trim() !== "" 
           ? `${selected.storeName} Store #${selected.storeId}` 
-          : `Store #${selected.storeId.toString().padStart(3, "0")}`}
+          : `Store ID: 🏬 ${selected.storeId.toString().padStart(3, "0")}`}
       </div>
     </div>
   </div>
@@ -1053,7 +1092,7 @@ useEffect(() => {
         Inactive
       </span>
     ) : (
-      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/80 dark:text-red-300">
         Sold Out • {selected.initialQuantity} listed
       </span>
     )}
@@ -1067,7 +1106,7 @@ useEffect(() => {
     className="flex justify-end"
   >
     <span className="text-lg mt-2 font-semibold flex gap-2 items-center">
-      {selected.price}
+      {Intl.NumberFormat().format(selected.price)}
       {TOKEN_LOGOS && TOKEN_LOGOS[selected.paymentToken] ? (
         <span className="flex items-center gap-1">
           {TOKEN_LOGOS[selected.paymentToken].name}
@@ -1133,8 +1172,21 @@ useEffect(() => {
         </>
       )}
 
+       {selected.active === false && (
+         <>
+         {/* Reactivate */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => reactivateListing(selected.id)}
+            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            Reactivate
+          </motion.button>
+        </>
+      )}
+
       {/* Cancel (only if no sales yet) */}
-      {selected.active && Number(selected.sold || 0) === 0 && (
+      {selected.active && Number(selected.initialQuantity - selected.quantity || 0) === 0 && (
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => cancelListingIfNoSales(selected.id)}
@@ -1225,7 +1277,7 @@ useEffect(() => {
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute bottom-3 left-4 bg-black/60 text-white px-3 py-1 rounded-lg text-sm">
-                      Store #{store.id.toString().padStart(3, "0")}
+                      Store ID: 🏬 {store.id.toString().padStart(3, "0")}
                     </div>
                   </motion.div>
 
@@ -1298,7 +1350,7 @@ useEffect(() => {
                       darkMode ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    No active listings found for this seller.
+                    {store?.owner?.toLowerCase() === address?.toLowerCase() ? "You do not have a listing yet." : "No active listings found for this seller."}
                   </p>
                 ) : (
                   <motion.div
@@ -1359,13 +1411,13 @@ useEffect(() => {
       Inactive
     </span>
   ) : (
-    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-700 dark:bg-red-900/80 dark:text-red-300">
       Sold Out • {l.initialQuantity} listed
     </span>
   )}
 </div>
                               <span className="text-base font-semibold flex items-center gap-2">
-                                {l.price}{" "}
+                                {Intl.NumberFormat().format(l.price)}{" "}
                                 {TOKEN_LOGOS &&
                                 TOKEN_LOGOS[l.paymentToken] ? (
                                   <span className="flex items-center gap-1">
@@ -1414,7 +1466,19 @@ useEffect(() => {
         </motion.button>
       )}
 
-      {l.active && Number(l.sold || 0) === 0 && (
+      {l.active === false && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3, ease: "easeInOut" }}
+          onClick={(e) => { e.stopPropagation(); reactivateListing(l.id); }}
+          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+        >
+          Reactivate
+        </motion.button>
+      )}
+
+      {l.active && Number(l.initialQuantity - l.quantity || 0) === 0 && (
         <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

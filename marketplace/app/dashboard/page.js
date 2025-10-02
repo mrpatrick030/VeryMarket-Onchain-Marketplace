@@ -32,6 +32,8 @@ const STATUS = [
   "Disputed",
   "Refunded",
   "Released",
+  "Cancelled",
+  "DisputeResolved"
 ];
 
 export default function Dashboard() {

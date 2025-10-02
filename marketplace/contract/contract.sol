@@ -68,6 +68,7 @@ contract Marketplace is ReentrancyGuard, Ownable {
         address buyer;
         address seller;
         uint256 listingId;
+        uint256 storeId;
         address paymentToken;
         uint256 amount;
         uint256 quantity;
@@ -80,6 +81,9 @@ contract Marketplace is ReentrancyGuard, Ownable {
         string buyerComment;
         bool rated;
         uint64 createdAt;
+        //dispute related below
+        OrderStatus previousStatusBeforeDispute;   // track what status to revert to
+        address disputeInitiator; // track who initiated the dispute
     }
 
     // fees & roles
@@ -119,15 +123,17 @@ contract Marketplace is ReentrancyGuard, Ownable {
 
     event ListingUpdated(uint256 indexed listingId, uint256 price, bool active, uint256 initialQuantity, uint256 quantity);
     event ListingCanceled(uint256 indexed listingId);
-
+    event ListingDeactivated(uint256 indexed listingId, bool active);
+    event ListingReactivated(uint256 indexed listingId, bool active);
     event OrderRequested(uint256 indexed orderId, uint256 indexed listingId, address indexed buyer, uint256 quantity);
     event ShippingSet(uint256 indexed orderId, uint256 shippingFee, uint16 etaDays);
     event OrderConfirmedAndPaid(uint256 indexed orderId, uint256 totalAmount);
     event MarkedShipped(uint256 indexed orderId);
     event DeliveryConfirmed(uint256 indexed orderId, uint256 sellerAmount, uint256 feeAmount);
     event Refunded(uint256 indexed orderId, uint256 amount);
-    event DisputeOpened(uint256 indexed orderId, address opener);
-    event DisputeResolved(uint256 indexed orderId, uint256 toBuyer, uint256 toSellerNet);
+    event DisputeOpened(uint256 indexed orderId, address indexed raisedBy);
+    event DisputeCancelled(uint256 indexed orderId, OrderStatus restoredStatus, address cancelledBy);
+    event DisputeResolved(uint256 indexed orderId, uint256 refundToBuyer, uint256 sellerNet, uint256 feeAmt);
     event TokenApproved(address token, bool approved);
     event OrderCanceledByBuyer(uint256 indexed orderId);
     event OrderCancelledBySeller(uint256 indexed orderId, uint256 indexed listingId);
@@ -306,8 +312,16 @@ function updateListing(
         Listing storage L = listings[listingId];
         require(L.seller == msg.sender, "not seller");
         L.active = false;
-        emit ListingUpdated(listingId, L.price, false, L.quantity);
+        emit ListingDeactivated(listingId, false);
     }
+
+    function reactivateListing(uint256 listingId) external {
+    Listing storage L = listings[listingId];
+    require(L.seller == msg.sender, "not seller");
+    require(!L.active, "already active");
+    L.active = true;
+    emit ListingReactivated(listingId, true);
+}
 
     function cancelListingIfNoSales(uint256 listingId) external {
         Listing storage L = listings[listingId];
@@ -335,6 +349,7 @@ function updateListing(
             buyer: msg.sender,
             seller: L.seller,
             listingId: listingId,
+            storeId: L.storeId,  
             paymentToken: L.paymentToken,
             amount: L.price * quantity,
             quantity: quantity,
@@ -346,7 +361,9 @@ function updateListing(
             completed: false,
             buyerComment: "",
             rated: false,
-            createdAt: uint64(block.timestamp)
+            createdAt: uint64(block.timestamp),
+            previousStatusBeforeDispute: OrderStatus.None,
+            disputeInitiator: address(0)
         });
 
         userOrders[msg.sender].push(id);
@@ -432,10 +449,10 @@ function updateListing(
     function buyerCancelBeforeEscrow(uint256 orderId) external {
         Order storage O = orders[orderId];
         require(msg.sender == O.buyer, "not buyer");
-        require(O.status == OrderStatus.Requested, "bad status");
+        require(O.status == OrderStatus.Requested || O.status == OrderStatus.ShippingSet, "bad status");
 
         listings[O.listingId].quantity += O.quantity;
-        O.status = OrderStatus.None;
+        O.status = OrderStatus.Cancelled;
 
         emit OrderCanceledByBuyer(orderId);
     }
@@ -479,44 +496,73 @@ function updateListing(
     emit OrderCancelledBySeller(orderId, O.listingId);
 }
 
-    function openDispute(uint256 orderId) external {
-        Order storage O = orders[orderId];
-        require(msg.sender == O.buyer || msg.sender == O.seller, "not party");
-        require(O.status == OrderStatus.Escrowed || O.status == OrderStatus.Shipped, "bad status");
+function openDispute(uint256 orderId) external {
+    Order storage order = orders[orderId];
+    require(msg.sender == order.buyer || msg.sender == order.seller, "Not a party to the order");
+    require(order.status == OrderStatus.Escrowed || order.status == OrderStatus.Shipped, "Invalid status");
 
-        O.status = OrderStatus.Disputed;
-        emit DisputeOpened(orderId, msg.sender);
+    order.previousStatusBeforeDispute = order.status;  // save current status
+    order.status = OrderStatus.Disputed;
+    order.disputeInitiator = msg.sender;  // track who raised it
+
+    emit DisputeOpened(orderId, msg.sender);
+}
+
+function cancelDispute(uint256 orderId) external {
+    Order storage order = orders[orderId];
+    require(order.status == OrderStatus.Disputed, "Order not in dispute");
+    
+    // either initiator or mediator can cancel
+    require(
+        msg.sender == order.disputeInitiator || msg.sender == mediator,
+        "Not allowed to cancel"
+    );
+
+    require(
+        order.previousStatusBeforeDispute == OrderStatus.Shipped || 
+        order.previousStatusBeforeDispute == OrderStatus.Escrowed,
+        "Invalid previous status"
+    );
+
+    order.status = order.previousStatusBeforeDispute;
+    order.disputeInitiator = address(0); // reset
+
+    emit DisputeCancelled(orderId, order.status, msg.sender);
+}
+
+function resolveDispute(
+    uint256 orderId,
+    uint256 refundToBuyer,
+    uint256 payoutToSeller
+) external nonReentrant {
+    require(msg.sender == mediator, "not mediator");
+    Order storage O = orders[orderId];
+    require(O.status == OrderStatus.Disputed, "not disputed");
+    require(O.fundsEscrowed, "no funds escrowed");
+
+    uint256 total = O.amount + O.shippingFee;
+    require(refundToBuyer + payoutToSeller <= total, "exceeds total");
+
+    uint256 feeAmt = (payoutToSeller * feeBps) / 10000;
+    uint256 sellerNet = payoutToSeller - feeAmt;
+
+    if (O.paymentToken == address(0)) {
+        if (refundToBuyer > 0) payable(O.buyer).transfer(refundToBuyer);
+        if (sellerNet > 0) payable(O.seller).transfer(sellerNet);
+        if (feeAmt > 0) payable(feeCollector).transfer(feeAmt);
+    } else {
+        IERC20 token = IERC20(O.paymentToken);
+        if (refundToBuyer > 0) token.transfer(O.buyer, refundToBuyer);
+        if (sellerNet > 0) token.transfer(O.seller, sellerNet);
+        if (feeAmt > 0) token.transfer(feeCollector, feeAmt);
     }
 
-    function resolveDispute(uint256 orderId, uint256 refundToBuyer, uint256 payoutToSeller)
-        external
-        nonReentrant
-    {
-        require(msg.sender == mediator, "not mediator");
-        Order storage O = orders[orderId];
-        require(O.status == OrderStatus.Disputed, "not disputed");
+    O.status = OrderStatus.DisputeResolved;
+    O.completed = true;
 
-        uint256 total = O.amount + O.shippingFee;
-        require(refundToBuyer + payoutToSeller <= total, "exceeds total");
+    emit DisputeResolved(orderId, refundToBuyer, sellerNet, feeAmt);
+}
 
-        uint256 feeAmt = (payoutToSeller * feeBps) / 10000;
-        uint256 sellerNet = payoutToSeller - feeAmt;
-
-        if (O.paymentToken == address(0)) {
-            if (refundToBuyer > 0) payable(O.buyer).transfer(refundToBuyer);
-            if (sellerNet > 0) payable(O.seller).transfer(sellerNet);
-            if (feeAmt > 0) payable(feeCollector).transfer(feeAmt);
-        } else {
-            IERC20 token = IERC20(O.paymentToken);
-            if (refundToBuyer > 0) token.transfer(O.buyer, refundToBuyer);
-            if (sellerNet > 0) token.transfer(O.seller, sellerNet);
-            if (feeAmt > 0) token.transfer(feeCollector, feeAmt);
-        }
-
-        O.status = OrderStatus.DisputeResolved;
-        O.completed = true;
-        emit DisputeResolved(orderId, refundToBuyer, sellerNet);
-    }
 
     // ---------------- VIEW FUNCTIONS ----------------
 

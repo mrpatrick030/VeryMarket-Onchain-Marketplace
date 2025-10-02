@@ -9,7 +9,7 @@ import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
 import InputModal from "./InputModal";
 import ChatModal from "./ChatModal"; // still available for later
-import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder } from "lucide-react";
+import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, CircleCheck, Package, Timer, MapPin, MessageSquareText, ThumbsUp, ThumbsDown, User, Store, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], darkMode }) {
@@ -23,7 +23,10 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 4;
+  // for showing current total items
+  const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const end = Math.min(currentPage * ITEMS_PER_PAGE, orders.length);
   const totalPages = Math.max(1, Math.ceil(orders.length / ITEMS_PER_PAGE));
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -76,6 +79,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
         buyer: o.buyer,
         seller: o.seller,
         listingId: Number(o.listingId),
+        storeId: Number(o.storeId),
         paymentToken: o.paymentToken,
         amountRaw: o.amount,
         amount: Number(formatUnits(o.amount, 18)), // assume 18 decimals
@@ -85,6 +89,8 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
         etaDays: Number(o.estimatedDeliveryDays || 0),
         buyerLocation: o.buyerLocation,
         status: Number(o.status),
+        disputeInitiator: o.disputeInitiator,
+        previousStatusBeforeDispute: o.previousStatus,
         fundsEscrowed: o.fundsEscrowed,
         completed: o.completed,
         buyerComment: o.buyerComment,
@@ -137,7 +143,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
       "Set Shipping",
       [
         { name: "shippingFee", label: "Shipping Fee (token units)", type: "text", placeholder: "e.g. 0.01" },
-        { name: "etaDays", label: "Estimated delivery days", type: "number", placeholder: "e.g. 5" },
+        { name: "etaDays", label: "Estimated Time of Delivery (days)", type: "number", placeholder: "e.g. 5" },
       ],
       async (values) => {
         const { shippingFee, etaDays } = values;
@@ -290,6 +296,17 @@ const openBuyerConfirmAndPay = (order) => {
     );
   };
 
+  // Cancel dispute
+  const cancelDispute = (orderId) => {
+    askConfirm(
+      "Cancel Dispute",
+      "Cancel this dispute only if there is a mutual agreement to cancel. Only the initiator of a dispute is allowed to cancel it.",
+      async () => {
+        await callTx("cancelDispute", orderId);
+      }
+    );
+  };
+
   // UI helpers
   const formatDate = (ts) => {
     if (!ts) return "";
@@ -324,230 +341,382 @@ const cardVariants = {
   }
 
   return (
-    <div className="space-y-4">
-      <div className={`p-4 rounded-xl ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">My Orders</h2>
-          <div className="text-sm text-gray-500">Showing {orders.length} orders</div>
-        </div>
-
-        {loading && <div className="text-sm text-gray-500">Loading...</div>}
-
-        {orders.length === 0 && !loading && (
-          <div className="text-center py-8 text-gray-500">You have no orders.</div>
-        )}
-
-
-{/* Orders Grid */}
-<AnimatePresence mode="wait">
-  <motion.div
-    key={currentPage}
-    variants={containerVariants}
-    initial="hidden"
-    animate="show"
-    exit={{ opacity: 0, y: -20 }}
-    className="grid gap-4"
+   <div className="space-y-6">
+  {/* Header */}
+  <div
+    className={`p-5 rounded-xl shadow-md ${
+      darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"
+    }`}
   >
-    {paginated.map((o) => {
-      const mineBuyer = o.buyer?.toLowerCase() === address?.toLowerCase();
-      const mineSeller = o.seller?.toLowerCase() === address?.toLowerCase();
-      const isMediator = mediator && mediator.toLowerCase() === address?.toLowerCase();
-      const tokenInfo = TOKEN_LOGOS[o.paymentToken] || { logo: "/logos/default.svg", name: "TOKEN" };
-      const statusLabel = STATUS?.[o.status] ?? String(o.status);
-
-      return (
-        <motion.div
-          key={`${o.id}-${o.listingId}`}
-          variants={cardVariants}
-          className={`p-4 rounded-lg shadow ${darkMode ? "bg-gray-800" : "bg-white"}`}
-        >
-          <div className="flex justify-between items-start gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="text-sm font-medium truncate">
-                  Order #{o.id} • {statusLabel}
-                </div>
-                <div className="text-xs text-gray-400 ml-2">{formatDate(o.createdAt)}</div>
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                Listing {o.listingId} • Qty {o.quantity} • Buyer:{" "}
-                <span className="font-mono">
-                  {o.buyer.slice(0, 6)}...{o.buyer.slice(-4)}
-                </span>{" "}
-                • Seller:{" "}
-                <span className="font-mono">
-                  {o.seller.slice(0, 6)}...{o.seller.slice(-4)}
-                </span>
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                • Estimated Delivery Time: {(o.etaDays === 1) ? (o.etaDays + " day") : (o.etaDays + " days")}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <img src={tokenInfo.logo} alt={tokenInfo.name} className="w-6 h-6" />
-              <div className="text-right">
-                <div className="font-semibold">
-                  {o.amount} {tokenInfo.name}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Shipping: {o.shippingFee ?? 0} {tokenInfo.name}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {mineSeller && o.status === 1 && (
-              <button onClick={() => openSellerSetShipping(o.id)} className="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">
-                Set Shipping
-              </button>
-            )}
-
-            {mineSeller && o.status === 3 && (
-              <button onClick={() => markShipped(o.id)} className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700">
-                Mark Shipped
-              </button>
-            )}
-
-            {mineBuyer && o.status === 2 && (
-              <button onClick={() => openBuyerConfirmAndPay(o)} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">
-                Confirm & Pay
-              </button>
-            )}
-
-            {mineBuyer && o.status === 4 && (
-              <button onClick={() => openConfirmDelivery(o.id)} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">
-                Confirm Delivery
-              </button>
-            )}
-
-            {mineBuyer && o.status === 1 && (
-              <button onClick={() => buyerCancelBeforeEscrow(o.id)} className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">
-                Cancel Order
-              </button>
-            )}
-
-            {mineBuyer && o.status === 3 && (
-              <button onClick={() => buyerCancelAndRefund(o.id)} className="px-3 py-1 rounded bg-amber-600 text-white hover:bg-amber-700">
-                Request Refund
-              </button>
-            )}
-
-            {(mineSeller && (o.status === 1 || o.status === 2)) && (
-              <button onClick={() => sellerCancelOrder(o.id)} className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">
-                Cancel Order
-              </button>
-            )}
-
-            {(mineBuyer || mineSeller) && (o.status === 3 || o.status === 4) && (
-              <button onClick={() => openDispute(o.id)} className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">
-                Open Dispute
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                const chatTarget = mineBuyer ? o.seller : o.buyer;
-                setChatWith(chatTarget);
-                setChatOpen(true);
-              }}
-              className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
-            >
-              <MessageSquare size={16} /> Chat
-            </button>
-          </div>
-        </motion.div>
-      );
-    })}
-  </motion.div>
-</AnimatePresence>
-
-
-{/* Pagination */}
-{totalPages > 1 && (
-  <div className="mt-20 flex justify-center items-center gap-2 flex-wrap">
-    {/* Prev Button */}
-    <button
-      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-      disabled={currentPage === 1}
-      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
-        ${darkMode
-          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-        }`}
-    >
-      Prev
-    </button>
-
-    {/* Page Numbers */}
-    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-      <button
-        key={page}
-        onClick={() => setCurrentPage(page)}
-        className={`px-4 py-2 rounded-lg border cursor-pointer font-medium transition-colors
-          ${page === currentPage
-            ? "bg-blue-500 border-blue-500 text-white"
-            : darkMode
-              ? "border-gray-700 text-gray-200 hover:bg-gray-700"
-              : "border-gray-300 text-gray-700 hover:bg-gray-200"
-          }`}
-      >
-        {page}
-      </button>
-    ))}
-
-    {/* Next Button */}
-    <button
-      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-      disabled={currentPage === totalPages}
-      className={`px-4 py-2 rounded-lg border cursor-pointer transition-colors
-        ${darkMode
-          ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-          : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-        }`}
-    >
-      Next
-    </button>
-  </div>
-)}
-
-
-
-      </div>
-
-      {/* ConfirmModal */}
-      <ConfirmModal
-        isOpen={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        title={confirmConfig.title}
-        message={confirmConfig.message}
-        onConfirm={() => {
-          setConfirmOpen(false);
-          try { confirmConfig.onConfirm(); } catch(e) { console.log(e); }
-        }}
-      />
-
-      {/* InputModal */}
-      <InputModal
-        isOpen={inputOpen}
-        onClose={() => setInputOpen(false)}
-        title={inputConfig.title}
-        fields={inputConfig.fields}
-        onSubmit={(values) => {
-          setInputOpen(false);
-          try { inputConfig.onSubmit(values); } catch(e) { console.log(e); }
-        }}
-      />
-
-      {/* Chat modal (kept here, we can wire server-side chat later) */}
-      <ChatModal
-        open={chatOpen}
-        onClose={() => { setChatOpen(false); setChatWith(null); }}
-        userWallet={address}
-        chatWith={chatWith}
-      />
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-xl font-bold">My Orders</h2>
+      <div className="text-sm text-gray-500">Showing {start} - {end} of {orders.length} orders</div>
     </div>
+
+    {loading && (
+      <div className="text-center py-6 text-gray-500 text-sm">Loading...</div>
+    )}
+
+    {orders.length === 0 && !loading && (
+      <div className="text-center py-10 text-gray-400 text-sm">
+        You have no orders.
+      </div>
+    )}
+
+    {/* Orders Grid */}
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={currentPage}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        exit={{ opacity: 0, y: -20 }}
+        className="grid gap-5"
+      >
+        {paginated.map((o) => {
+          const mineBuyer = o.buyer?.toLowerCase() === address?.toLowerCase();
+          const mineSeller = o.seller?.toLowerCase() === address?.toLowerCase();
+          const isMediator =
+            mediator && mediator.toLowerCase() === address?.toLowerCase();
+          const tokenInfo =
+            TOKEN_LOGOS[o.paymentToken] || {
+              logo: "/logos/default.svg",
+              name: "TOKEN",
+            };
+          const statusLabel = STATUS?.[o.status] ?? String(o.status);
+
+          return (
+<motion.div
+  key={`${o.id}-${o.listingId}`}
+  variants={cardVariants}
+  className={`p-5 rounded-xl shadow-md border ${
+    darkMode
+      ? "bg-gray-800 border-gray-700"
+      : "bg-white border-gray-200"
+  }`}
+>
+
+
+{/* Header */}
+<div className="flex justify-between items-center border-b pb-2 mb-3">
+  <div className="flex items-center gap-2 flex-wrap">
+    <span className="text-sm font-semibold flex items-center gap-1">
+      📦 Order #{o.id} • 🏷️ Listing #{o.listingId}
+    </span>
+    <span
+      className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}
+    >
+      {o.status === 1 && "🟡 "}{o.status === 2 && "🔵 "}{o.status === 3 && "🟣 "}
+      {o.status === 4 && "🟢 "}{(o.status === 5 || o.status === 8) && "🔴 "}
+      {statusLabel}
+    </span>
+    {o.completed && (
+      <CircleCheck size={18} className={`${darkMode ? "text-green-400" : "text-green-600"}`} />
+    )}
+    {(o.disputeInitiator && o.disputeInitiator !== "0x0000000000000000000000000000000000000000") && (
+      <span className="flex items-center gap-1 text-red-500 text-xs">
+        <AlertTriangle size={14} /> Dispute by {o.disputeInitiator.slice(0, 6)}...
+        {o.disputeInitiator.slice(-4)}
+      </span>
+    )}
+  </div>
+  <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+    {formatDate(o.createdAt)}
+  </span>
+</div>
+
+{/* Details */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+  {/* Left column */}
+  <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
+    <p className="flex items-center gap-1">
+      <Package size={14} /> <span className="font-medium">Quantity:</span> {o.quantity}
+    </p>
+    <p className="flex items-center gap-1">
+      <Timer size={14} /> <span className="font-medium">Estimated Delivery:</span>{" "}
+      {o.etaDays ? (
+        <span>{o.etaDays} {o.etaDays === 1 ? "day" : "days"}</span>
+      ) : (
+        <span className="italic text-gray-400">
+          {o.status === 1
+            ? o.buyer.toLowerCase() === address.toLowerCase()
+              ? "To be set by seller"
+              : "Please set delivery time"
+            : ""}
+           {o.status === 8
+            ? "Not available"
+            : ""}
+        </span>
+      )}
+    </p>
+    <p className="flex items-center gap-1">
+      <MapPin size={14} />{" "}
+      <span className="font-medium">
+        {o.buyer.toLowerCase() === address.toLowerCase() ? "Your" : "Buyer's"} Location:
+      </span>{" "}
+      {o.buyerLocation}
+    </p>
+    {o.buyerComment && (
+      <p className="flex items-center gap-1">
+        <MessageSquareText size={14} />{" "}
+        <span className="font-medium">
+          {o.buyer.toLowerCase() === address.toLowerCase() ? "Your" : "Buyer's"} Comment:
+        </span>{" "}
+        {o.buyerComment}
+      </p>
+    )}
+    {o.rated && (
+      <p className="flex items-center gap-1">
+        {o.rated === true ? (
+          <ThumbsUp size={18} className="text-green-500" />
+        ) : (
+          <ThumbsDown size={18} className="text-red-500" />
+        )}
+        <span className="font-medium">
+          {o.buyer.toLowerCase() === address.toLowerCase()
+            ? "How you rated seller:"
+            : "How buyer rated you:"}
+        </span>{" "}
+        {o.rated === true ? "Good" : "Bad"}
+      </p>
+    )}
+  </div>
+
+{/* Right column */}
+<div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
+  <p className="flex items-center gap-1">
+    <User size={14} /> <span className="font-medium text-blue-600">Buyer:</span>{" "}
+    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"}`}>
+      {o.buyer.slice(0, 6)}...{o.buyer.slice(-4)}
+    </span>
+  </p>
+  <p className="flex items-center gap-1">
+    <User size={14} /> <span className="font-medium text-purple-600">Seller:</span>{" "}
+    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-purple-900 text-purple-200" : "bg-purple-100 text-purple-800"}`}>
+      {o.seller.slice(0, 6)}...{o.seller.slice(-4)}
+    </span>
+  </p>
+  <p className="flex items-center gap-1">
+    <Store size={14} /> <span className="font-medium">Store ID:</span>{" "}
+    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-800"}`}>
+      🏬 {o.storeId?.toString().padStart(3, "0")}
+    </span>
+  </p>
+</div>
+</div>
+
+
+              {/* Price */}
+              <div className="flex justify-end items-center gap-2 mt-4">
+                <img
+                  src={tokenInfo.logo}
+                  alt={tokenInfo.name}
+                  className="w-6 h-6"
+                />
+                <div className="text-right">
+                  <div className={`font-semibold ${darkMode ? "text-gray-100" : "text-gray-700"}`}>
+                    {Intl.NumberFormat().format(o.amount)} {tokenInfo.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Shipping: {Intl.NumberFormat().format(o.shippingFee) ?? 0} {tokenInfo.name}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {mineSeller && o.status === 1 && (
+                  <button
+                    onClick={() => openSellerSetShipping(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Set Shipping
+                  </button>
+                )}
+
+                {mineSeller && o.status === 3 && (
+                  <button
+                    onClick={() => markShipped(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Mark Shipped
+                  </button>
+                )}
+
+                {mineBuyer && o.status === 2 && (
+                  <button
+                    onClick={() => openBuyerConfirmAndPay(o)}
+                    className="px-3 py-1 rounded-md text-sm bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Confirm & Pay
+                  </button>
+                )}
+
+                {mineBuyer && o.status === 4 && (
+                  <button
+                    onClick={() => openConfirmDelivery(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Confirm Delivery
+                  </button>
+                )}
+
+                {(mineBuyer && (o.status === 1 || o.status === 2)) && (
+                  <button
+                    onClick={() => buyerCancelBeforeEscrow(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+
+                {mineBuyer && o.status === 3 && (
+                  <button
+                    onClick={() => buyerCancelAndRefund(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    Request Refund
+                  </button>
+                )}
+
+                {(mineSeller && (o.status === 1 || o.status === 2)) && (
+                  <button
+                    onClick={() => sellerCancelOrder(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+
+                {(mineBuyer || mineSeller) && (o.status === 3 || o.status === 4) && (
+                  <button
+                    onClick={() => openDispute(o.id)}
+                    className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Open Dispute
+                  </button>
+                )}
+
+                {(mineBuyer || mineSeller) &&
+                  o.status === 5 &&
+                  o.disputeInitiator.toLowerCase() === address.toLowerCase() && (
+                    <button
+                      onClick={() => cancelDispute(o.id)}
+                      className="px-3 py-1 rounded-md text-sm bg-gray-500 text-white hover:bg-gray-600"
+                    >
+                      Cancel Dispute
+                    </button>
+                  )}
+
+                <button
+                  onClick={() => {
+                    const chatTarget = mineBuyer ? o.seller : o.buyer;
+                    setChatWith(chatTarget);
+                    setChatOpen(true);
+                  }}
+                  className="px-3 py-1 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <MessageSquare size={16} /> Chat
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+    </AnimatePresence>
+
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <div className="mt-10 flex justify-center items-center gap-2 flex-wrap">
+        {/* Prev */}
+        <button
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className={`px-4 py-2 rounded-lg border transition-colors ${
+            darkMode
+              ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          }`}
+        >
+          Prev
+        </button>
+
+        {/* Pages */}
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
+              page === currentPage
+                ? "bg-blue-500 border-blue-500 text-white"
+                : darkMode
+                ? "border-gray-700 text-gray-200 hover:bg-gray-700"
+                : "border-gray-300 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+
+        {/* Next */}
+        <button
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className={`px-4 py-2 rounded-lg border transition-colors ${
+            darkMode
+              ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          }`}
+        >
+          Next
+        </button>
+      </div>
+    )}
+  </div>
+
+  {/* Confirm Modal */}
+  <ConfirmModal
+    isOpen={confirmOpen}
+    onClose={() => setConfirmOpen(false)}
+    title={confirmConfig.title}
+    message={confirmConfig.message}
+    onConfirm={() => {
+      setConfirmOpen(false);
+      try {
+        confirmConfig.onConfirm();
+      } catch (e) {
+        console.log(e);
+      }
+    }}
+  />
+
+  {/* Input Modal */}
+  <InputModal
+    isOpen={inputOpen}
+    onClose={() => setInputOpen(false)}
+    title={inputConfig.title}
+    fields={inputConfig.fields}
+    onSubmit={(values) => {
+      setInputOpen(false);
+      try {
+        inputConfig.onSubmit(values);
+      } catch (e) {
+        console.log(e);
+      }
+    }}
+  />
+
+  {/* Chat Modal */}
+  <ChatModal
+    open={chatOpen}
+    onClose={() => {
+      setChatOpen(false);
+      setChatWith(null);
+    }}
+    userWallet={address}
+    chatWith={chatWith}
+  />
+</div>
+
   );
 }

@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 // Paste your deployed address & ABI from Remix after deployment
-export const MARKETPLACE_ADDRESS = "0x9169082FBEd080A342b8eD13eaFE1Bb87Cd07bD5";
+export const MARKETPLACE_ADDRESS = "0xcd5aBb7167944a0843019305f4aCCAd54AfD1119";
 export const MARKETPLACE_ABI = [
   {
     inputs: [
@@ -58,6 +58,19 @@ export const MARKETPLACE_ABI = [
     name: "buyerConfirmAndPay",
     outputs: [],
     stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+    ],
+    name: "cancelDispute",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -239,24 +252,6 @@ export const MARKETPLACE_ABI = [
   {
     inputs: [
       {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "emergencyWithdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
         internalType: "uint96",
         name: "_feeBps",
         type: "uint96",
@@ -338,8 +333,33 @@ export const MARKETPLACE_ABI = [
       },
       {
         indexed: false,
+        internalType: "enum Marketplace.OrderStatus",
+        name: "restoredStatus",
+        type: "uint8",
+      },
+      {
+        indexed: false,
         internalType: "address",
-        name: "opener",
+        name: "cancelledBy",
+        type: "address",
+      },
+    ],
+    name: "DisputeCancelled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "raisedBy",
         type: "address",
       },
     ],
@@ -358,18 +378,42 @@ export const MARKETPLACE_ABI = [
       {
         indexed: false,
         internalType: "uint256",
-        name: "toBuyer",
+        name: "refundToBuyer",
         type: "uint256",
       },
       {
         indexed: false,
         internalType: "uint256",
-        name: "toSellerNet",
+        name: "sellerNet",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "feeAmt",
         type: "uint256",
       },
     ],
     name: "DisputeResolved",
     type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "emergencyWithdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
     anonymous: false,
@@ -444,6 +488,44 @@ export const MARKETPLACE_ABI = [
       },
       {
         indexed: false,
+        internalType: "bool",
+        name: "active",
+        type: "bool",
+      },
+    ],
+    name: "ListingDeactivated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "active",
+        type: "bool",
+      },
+    ],
+    name: "ListingReactivated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
         internalType: "uint256",
         name: "price",
         type: "uint256",
@@ -453,6 +535,12 @@ export const MARKETPLACE_ABI = [
         internalType: "bool",
         name: "active",
         type: "bool",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "initialQuantity",
+        type: "uint256",
       },
       {
         indexed: false,
@@ -526,6 +614,25 @@ export const MARKETPLACE_ABI = [
         type: "uint256",
       },
       {
+        indexed: true,
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
+      },
+    ],
+    name: "OrderCancelledBySeller",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+      {
         indexed: false,
         internalType: "uint256",
         name: "totalAmount",
@@ -586,6 +693,19 @@ export const MARKETPLACE_ABI = [
     type: "event",
   },
   {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "listingId",
+        type: "uint256",
+      },
+    ],
+    name: "reactivateListing",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     anonymous: false,
     inputs: [
       {
@@ -630,6 +750,19 @@ export const MARKETPLACE_ABI = [
       },
     ],
     name: "resolveDispute",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "orderId",
+        type: "uint256",
+      },
+    ],
+    name: "sellerCancelOrder",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -843,7 +976,7 @@ export const MARKETPLACE_ABI = [
       },
       {
         internalType: "uint256",
-        name: "quantity",
+        name: "initialQuantity",
         type: "uint256",
       },
     ],
@@ -1040,6 +1173,116 @@ export const MARKETPLACE_ABI = [
   },
   {
     inputs: [],
+    name: "getAllDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "getAllListings",
     outputs: [
       {
@@ -1145,6 +1388,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -1203,6 +1451,16 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order[]",
@@ -1475,6 +1733,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -1533,6 +1796,16 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order",
@@ -1576,6 +1849,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -1634,6 +1912,16 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order[]",
@@ -1677,6 +1965,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -1735,6 +2028,16 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order[]",
@@ -1778,6 +2081,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -1836,6 +2144,126 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getResolvedDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order[]",
@@ -2107,6 +2535,11 @@ export const MARKETPLACE_ABI = [
             type: "uint256",
           },
           {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
             internalType: "address",
             name: "paymentToken",
             type: "address",
@@ -2165,6 +2598,248 @@ export const MARKETPLACE_ABI = [
             internalType: "uint64",
             name: "createdAt",
             type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+    ],
+    name: "getUserOpenDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
+          },
+        ],
+        internalType: "struct Marketplace.Order[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+    ],
+    name: "getUserResolvedDisputes",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "uint256",
+            name: "id",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "buyer",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "seller",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "listingId",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "storeId",
+            type: "uint256",
+          },
+          {
+            internalType: "address",
+            name: "paymentToken",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "quantity",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "shippingFee",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16",
+            name: "estimatedDeliveryDays",
+            type: "uint16",
+          },
+          {
+            internalType: "string",
+            name: "buyerLocation",
+            type: "string",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "status",
+            type: "uint8",
+          },
+          {
+            internalType: "bool",
+            name: "fundsEscrowed",
+            type: "bool",
+          },
+          {
+            internalType: "bool",
+            name: "completed",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "buyerComment",
+            type: "string",
+          },
+          {
+            internalType: "bool",
+            name: "rated",
+            type: "bool",
+          },
+          {
+            internalType: "uint64",
+            name: "createdAt",
+            type: "uint64",
+          },
+          {
+            internalType: "enum Marketplace.OrderStatus",
+            name: "previousStatusBeforeDispute",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "disputeInitiator",
+            type: "address",
           },
         ],
         internalType: "struct Marketplace.Order[]",
@@ -2324,6 +2999,11 @@ export const MARKETPLACE_ABI = [
         type: "uint256",
       },
       {
+        internalType: "uint256",
+        name: "storeId",
+        type: "uint256",
+      },
+      {
         internalType: "address",
         name: "paymentToken",
         type: "address",
@@ -2382,6 +3062,16 @@ export const MARKETPLACE_ABI = [
         internalType: "uint64",
         name: "createdAt",
         type: "uint64",
+      },
+      {
+        internalType: "enum Marketplace.OrderStatus",
+        name: "previousStatusBeforeDispute",
+        type: "uint8",
+      },
+      {
+        internalType: "address",
+        name: "disputeInitiator",
+        type: "address",
       },
     ],
     stateMutability: "view",
