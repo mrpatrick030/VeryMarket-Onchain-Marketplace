@@ -68,7 +68,7 @@ export default function DisputesTab({ pushToast, darkMode }) {
       const openDisputes = await contract.getAllOpenDisputes();
       setDisputes(openDisputes);
     } catch (err) {
-      console.error("Failed to fetch disputes:", err);
+      console.log("Failed to fetch disputes:", err);
     }
   };
 
@@ -96,7 +96,7 @@ export default function DisputesTab({ pushToast, darkMode }) {
       setPayoutToSeller("");
       fetchDisputes();
     } catch (err) {
-      console.error("Resolve dispute failed:", err);
+      console.log("Resolve dispute failed:", err);
       pushToast("Error", "Failed to resolve dispute", "error");
     } finally {
       setLoading(false);

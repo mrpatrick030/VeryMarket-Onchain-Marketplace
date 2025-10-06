@@ -23,7 +23,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 4;
+  const ITEMS_PER_PAGE = 10;
   // for showing current total items
   const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const end = Math.min(currentPage * ITEMS_PER_PAGE, orders.length);
@@ -89,6 +89,8 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
         etaDays: Number(o.estimatedDeliveryDays || 0),
         buyerLocation: o.buyerLocation,
         status: Number(o.status),
+        uri:o.uri,
+        title:o.title,
         disputeInitiator: o.disputeInitiator,
         previousStatusBeforeDispute: o.previousStatus,
         fundsEscrowed: o.fundsEscrowed,
@@ -425,6 +427,20 @@ const cardVariants = {
   </span>
 </div>
 
+{/* Product info (new) */}
+<div className="flex items-center gap-3 mb-4">
+  <img
+    src={o.uri}
+    alt={o.title}
+    className="w-16 h-16 rounded-lg object-cover border"
+  />
+  <div>
+    <h3 className={`font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
+      {o.title || "Untitled Product"}
+    </h3>
+  </div>
+</div>
+
 {/* Details */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
   {/* Left column */}
@@ -482,28 +498,29 @@ const cardVariants = {
     )}
   </div>
 
-{/* Right column */}
-<div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
-  <p className="flex items-center gap-1">
-    <User size={14} /> <span className="font-medium text-blue-600">Buyer:</span>{" "}
-    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"}`}>
-      {o.buyer.slice(0, 6)}...{o.buyer.slice(-4)}
-    </span>
-  </p>
-  <p className="flex items-center gap-1">
-    <User size={14} /> <span className="font-medium text-purple-600">Seller:</span>{" "}
-    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-purple-900 text-purple-200" : "bg-purple-100 text-purple-800"}`}>
-      {o.seller.slice(0, 6)}...{o.seller.slice(-4)}
-    </span>
-  </p>
-  <p className="flex items-center gap-1">
-    <Store size={14} /> <span className="font-medium">Store ID:</span>{" "}
-    <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-800"}`}>
-      🏬 {o.storeId?.toString().padStart(3, "0")}
-    </span>
-  </p>
+  {/* Right column */}
+  <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
+    <p className="flex items-center gap-1">
+      <User size={14} /> <span className="font-medium text-blue-600">Buyer:</span>{" "}
+      <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"}`}>
+        {o.buyer.slice(0, 6)}...{o.buyer.slice(-4)}
+      </span>
+    </p>
+    <p className="flex items-center gap-1">
+      <User size={14} /> <span className="font-medium text-purple-600">Seller:</span>{" "}
+      <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-purple-900 text-purple-200" : "bg-purple-100 text-purple-800"}`}>
+        {o.seller.slice(0, 6)}...{o.seller.slice(-4)}
+      </span>
+    </p>
+    <p className="flex items-center gap-1">
+      <Store size={14} /> <span className="font-medium">Store ID:</span>{" "}
+      <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-800"}`}>
+        🏬 {o.storeId?.toString().padStart(3, "0")}
+      </span>
+    </p>
+  </div>
 </div>
-</div>
+
 
 
               {/* Price */}

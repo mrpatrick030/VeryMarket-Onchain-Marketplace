@@ -121,7 +121,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
   }, [contract]);
 
     //pagination
-const ITEMS_PER_PAGE = 3; // adjust per your grid
+const ITEMS_PER_PAGE = 10; // adjust per your grid
 const [currentPage, setCurrentPage] = useState(1);
 // Calculate pagination
 const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -383,7 +383,7 @@ const createOrderRequest = (id) => {
   // Fetch listings for Seller Profile
   // --- Inside your ListingsTab component ---
 const [currentPageOfSeller, setCurrentPageOfSeller] = useState(1);
-const [itemsPerPage] = useState(3);
+const [itemsPerPage] = useState(10);
 
 // --- Fetch seller listings ---
 useEffect(() => {
