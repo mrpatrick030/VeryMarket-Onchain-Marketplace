@@ -1,62 +1,175 @@
-// components/ChatModal.jsx
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { X, ImageIcon, Send, FileIcon, Upload } from "lucide-react";
 import axios from "axios";
 
-export default function ChatModal({ open, onClose, userWallet, chatWith }) {
+export default function ChatModal({
+  open,
+  onClose,
+  userWallet,
+  chatWith,
+  orderId,
+  userRole,
+  darkMode,
+}) {
+  const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [mediatorJoined, setMediatorJoined] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Fetch messages
-  const fetchMessages = async () => {
-    if (!userWallet || !chatWith) return;
+  // Fetch or create session
+  const fetchSession = async () => {
+    if (!orderId || !userWallet || !chatWith) return;
     try {
-      const res = await axios.get(`/api/chats`, {
-        params: { userWallet, chatWith },
-      });
-      setMessages(res.data || []);
+      const res = await axios.get(`/api/chats/sessions?orderId=${orderId}`);
+      let chatSession = res.data;
+      if (!chatSession) {
+        const createRes = await axios.post(`/api/chats/sessions`, {
+          order_id: orderId,
+          buyer_wallet: userRole === "buyer" ? userWallet : chatWith,
+          seller_wallet: userRole === "seller" ? userWallet : chatWith,
+        });
+        chatSession = createRes.data;
+      }
+      setSession(chatSession);
+      setMediatorJoined(chatSession?.mediator_joined || false);
     } catch (err) {
-      console.error("Error fetching messages", err);
+      console.log("Error fetching session:", err);
     }
   };
 
-  // Load initial messages + poll every 5s
+  // Fetch messages
+  const fetchMessages = async () => {
+    if (!session?.id) return;
+    try {
+      const res = await axios.get(`/api/chats/messages?sessionId=${session.id}`);
+      setMessages(res.data || []);
+    } catch (err) {
+      console.log("Error fetching messages:", err);
+    }
+  };
+
   useEffect(() => {
-    if (open) {
+    if (open) fetchSession();
+  }, [open]);
+
+  useEffect(() => {
+    if (session?.id) {
       fetchMessages();
-      const interval = setInterval(fetchMessages, 5000);
+      const interval = setInterval(fetchMessages, 4000);
       return () => clearInterval(interval);
     }
-  }, [open, userWallet, chatWith]);
+  }, [session?.id]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!newMessage.trim()) return;
-    setLoading(true);
+  // Upload to IPFS
+  const uploadFile = async (file) => {
+    if (!file) return null;
     try {
-      const res = await axios.post("/api/chats", {
+      setUploading(true);
+      setUploadProgress(0);
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await axios.post("/api/uploadFiles", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progress) => {
+          const percent = Math.round((progress.loaded * 100) / progress.total);
+          setUploadProgress(percent);
+        },
+      });
+      if (response.status === 200) {
+        return response.data.cid;
+      }
+    } catch (error) {
+      console.log("Error uploading file:", error.message);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+    return null;
+  };
+
+  // Send message
+  const handleSend = async () => {
+    if (!newMessage.trim() && !file) return;
+    if (!session?.id) return;
+    setLoading(true);
+
+    try {
+      let attachmentUrl = null;
+      if (file) {
+        const cid = await uploadFile(file);
+        if (cid) {
+          attachmentUrl = `${cid}`;
+        }
+      }
+
+      await axios.post(`/api/chats/messages`, {
+        session_id: session.id,
         sender_wallet: userWallet,
         receiver_wallet: chatWith,
         message: newMessage.trim(),
+        attachment_url: attachmentUrl,
       });
 
-      if (res.data) {
-        setMessages((prev) => [...prev, res.data]);
-        setNewMessage("");
-      }
+      setNewMessage("");
+      setFile(null);
+      setPreviewUrl(null);
+      fetchMessages();
     } catch (err) {
-      console.error("Error sending message", err);
+      console.log("Error sending message:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle file select and preview
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+    setFile(selected);
+    setPreviewUrl(URL.createObjectURL(selected));
+  };
+
+  // Drag and drop handlers 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = () => setIsDragging(false);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) {
+      setFile(dropped);
+      setPreviewUrl(URL.createObjectURL(dropped));
+    }
+  };
+
+  // Mediator joins
+  const handleMediatorJoin = async () => {
+    if (!session?.id) return;
+    try {
+      await axios.patch(`/api/chats/mediator`, {
+        session_id: session.id,
+        mediator_wallet: userWallet,
+      });
+      setMediatorJoined(true);
+    } catch (err) {
+      console.log("Error joining as mediator:", err);
     }
   };
 
@@ -75,79 +188,224 @@ export default function ChatModal({ open, onClose, userWallet, chatWith }) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 rounded-xl shadow-xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden"
+            transition={{ duration: 0.3 }}
             onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden rounded-xl shadow-xl border ${
+              darkMode
+                ? "bg-gray-900 text-gray-100 border-gray-700"
+                : "bg-white text-gray-900 border-gray-200"
+            }`}
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-4 py-3 border-b dark:border-gray-700 bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-              <h3 className="font-semibold text-lg">Chat</h3>
+            <div
+              className={`flex justify-between items-center px-4 py-3 border-b ${
+                darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-100"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                💬 Chat (Order #{orderId})
+              </div>
+
+              {userRole === "mediator" && !mediatorJoined && (
+                <button
+                  onClick={handleMediatorJoin}
+                  className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full hover:bg-blue-700 transition"
+                >
+                  Join Chat
+                </button>
+              )}
+
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-blue-700/40 transition"
+                className={`p-2 rounded-full transition ${
+                  darkMode
+                    ? "hover:bg-gray-700 text-gray-300"
+                    : "hover:bg-gray-200 text-gray-700"
+                }`}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-800">
-              {messages.map((m) => {
-                  const isMe =
-                    m.sender_wallet.toLowerCase() ===
-                    userWallet?.toLowerCase();
-                  return (
-                    <motion.div
-                      key={m.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className={`flex ${
-                        isMe ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`px-3 py-2 rounded-2xl max-w-[75%] shadow-sm ${
-                          isMe
-                            ? "bg-blue-500 text-white rounded-br-none"
-                            : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-200 rounded-bl-none"
-                        }`}
-                      >
-                        <p className="text-sm">{m.message}</p>
-                        <span className="text-[10px] opacity-70 block mt-1 text-right">
-                          {new Date(m.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+            {/* Mediator notice */}
+            {mediatorJoined && (
+              <div
+                className={`text-center py-2 text-sm font-medium border-b ${
+                  darkMode
+                    ? "bg-yellow-900 text-yellow-100 border-yellow-700"
+                    : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                }`}
+              >
+                🟢 Mediator has joined the chat
+              </div>
+            )}
+
+            {/* Messages area with drag-and-drop */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex-1 p-4 overflow-y-auto space-y-3 relative transition-colors duration-200 ${
+                isDragging
+                  ? "border-2 border-green-500 bg-green-50/20 dark:bg-green-900/30"
+                  : darkMode
+                  ? "bg-gray-800"
+                  : "bg-gray-50"
+              }`}
+            >
+              {isDragging && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white text-sm font-semibold rounded-lg">
+                  <Upload className="mr-2" /> Drop file to upload
+                </div>
+              )}
+
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-400 mt-10 text-sm">
+                  No messages yet. Start the conversation!
+                </div>
+              ) : (
+                messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    msg={m}
+                    userWallet={userWallet}
+                    darkMode={darkMode}
+                  />
+                ))
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-              <div className="p-3 border-t dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-2">
+            {/* Input and preview */}
+            <div
+              className={`p-3 border-t flex flex-col gap-2 ${
+                darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+              }`}
+            >
+              {previewUrl && (
+                <div className="relative">
+                  {file.type.startsWith("image/") ? (
+                    <img
+                      src={previewUrl}
+                      alt="preview"
+                      className="max-h-32 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
+                        darkMode
+                          ? "border-gray-700 bg-gray-800 text-gray-300"
+                          : "border-gray-200 bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      <FileIcon size={16} />
+                      <span className="text-xs truncate">{file.name}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setFile(null);
+                      setPreviewUrl(null);
+                    }}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 text-xs"
+                  >
+                    <X size={12} />
+                  </button>
+                  {uploading && (
+                    <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                      <div
+                        className="h-2 bg-green-600 rounded-full transition-all"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2 items-center">
+                <label className="cursor-pointer text-gray-500 hover:text-green-600">
+                  <ImageIcon size={20} />
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                  />
+                </label>
+
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 rounded-lg border dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-200 text-sm"
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    darkMode
+                      ? "bg-gray-800 border-gray-700 text-gray-200"
+                      : "bg-white border-gray-300 text-gray-900"
+                  }`}
                 />
+
                 <button
                   onClick={handleSend}
-                  disabled={loading}
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors text-sm font-medium"
+                  disabled={loading || uploading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-2 text-sm disabled:opacity-50 flex items-center gap-1"
                 >
-                  Send
+                  {uploading ? (
+                    <span className="text-xs">Uploading...</span>
+                  ) : (
+                    <>
+                      <Send size={16} /> Send
+                    </>
+                  )}
                 </button>
               </div>
+            </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+//Message Bubble
+function MessageBubble({ msg, userWallet, darkMode }) {
+  const isMe = msg.sender_wallet?.toLowerCase() === userWallet?.toLowerCase();
+  const bubbleStyle = isMe
+    ? "bg-blue-700 text-white rounded-br-none self-end"
+    : darkMode
+    ? "bg-gray-700 text-gray-100 rounded-bl-none self-start"
+    : "bg-gray-200 text-gray-900 rounded-bl-none self-start";
+
+  return (
+    <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[75%] p-2 rounded-2xl shadow ${bubbleStyle}`}>
+        {msg.attachment_url && (
+          msg.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+            <img
+              src={msg.attachment_url}
+              alt="attachment"
+              className="rounded-lg mb-1 max-w-[200px]"
+            />
+          ) : (
+            <a
+              href={msg.attachment_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm"
+            >
+              📎 View file
+            </a>
+          )
+        )}
+        <p className="text-sm">{msg.message}</p>
+      </div>
+      <span className="text-[10px] opacity-70 mt-1">
+        {new Date(msg.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </span>
+    </div>
   );
 }

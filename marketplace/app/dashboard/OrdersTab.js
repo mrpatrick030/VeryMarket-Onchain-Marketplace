@@ -59,7 +59,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
           setMediator(med);
         } catch (err) {
           // ignore if not present
-          console.debug("mediator not readable:", err?.message || err);
+          console.log("mediator not readable:", err?.message || err);
         }
       } catch (err) {
         console.log("contract init err", err);
@@ -336,6 +336,18 @@ const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
 };
+
+//useState for chat orders
+const [selectedOrder, setSelectedOrder] = useState(null);
+
+//determine user role
+const userRole =
+  address === selectedOrder?.buyer
+    ? "buyer"
+    : address === selectedOrder?.seller
+    ? "seller"
+    : "mediator";
+
 
   // If not connected
   if (!walletProvider) {
@@ -629,6 +641,7 @@ const cardVariants = {
                   onClick={() => {
                     const chatTarget = mineBuyer ? o.seller : o.buyer;
                     setChatWith(chatTarget);
+                    setSelectedOrder(o);
                     setChatOpen(true);
                   }}
                   className="px-3 py-1 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
@@ -724,15 +737,20 @@ const cardVariants = {
   />
 
   {/* Chat Modal */}
-  <ChatModal
-    open={chatOpen}
-    onClose={() => {
-      setChatOpen(false);
-      setChatWith(null);
-    }}
-    userWallet={address}
-    chatWith={chatWith}
-  />
+<ChatModal
+  open={chatOpen}
+  onClose={() => {
+    setChatOpen(false);
+    setChatWith(null);
+  }}
+  userWallet={address}
+  chatWith={chatWith}
+  orderId={selectedOrder?.id}
+  userRole={userRole}
+  darkMode={darkMode}
+/>
+
+
 </div>
 
   );
