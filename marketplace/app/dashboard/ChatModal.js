@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, ImageIcon, Send, FileIcon, Upload } from "lucide-react";
+import { X, ImageIcon, Send, FileIcon, Upload, MessageSquare } from "lucide-react";
 import axios from "axios";
 
 export default function ChatModal({
@@ -203,7 +203,7 @@ export default function ChatModal({
               }`}
             >
               <div className="flex items-center gap-2 text-sm font-semibold">
-                💬 Chat (Order #{orderId})
+                <MessageSquare size={16} /> Chat (Order #{orderId})
               </div>
 
               {userRole === "mediator" && !mediatorJoined && (
@@ -232,8 +232,8 @@ export default function ChatModal({
               <div
                 className={`text-center py-2 text-sm font-medium border-b ${
                   darkMode
-                    ? "bg-yellow-900 text-yellow-100 border-yellow-700"
-                    : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                    ? "bg-gray-900 text-yellow-100 border-blue-700"
+                    : "bg-blue-100 text-gray-700 border-blue-300"
                 }`}
               >
                 🟢 Mediator has joined the chat
@@ -266,6 +266,7 @@ export default function ChatModal({
               ) : (
                 messages.map((m) => (
                   <MessageBubble
+                    mediator={session?.mediator_wallet}
                     key={m.id}
                     msg={m}
                     userWallet={userWallet}
@@ -368,18 +369,32 @@ export default function ChatModal({
   );
 }
 
-//Message Bubble
-function MessageBubble({ msg, userWallet, darkMode }) {
-  const isMe = msg.sender_wallet?.toLowerCase() === userWallet?.toLowerCase();
+// Message Bubble
+function MessageBubble({ msg, userWallet, mediator, darkMode }) {
+  const isMe = msg.sender_wallet?.toLowerCase() === userWallet?.toLowerCase() && msg.sender_wallet?.toLowerCase() !== mediator?.toLowerCase()
+  const isMediator = msg.sender_wallet?.toLowerCase() === mediator?.toLowerCase()
   const bubbleStyle = isMe
-    ? "bg-blue-700 text-white rounded-br-none self-end"
+    ? "bg-blue-600 text-white rounded-br-none self-end"
+    : isMediator
+    ? "bg-green-700 text-white rounded-bl-none self-start"
     : darkMode
     ? "bg-gray-700 text-gray-100 rounded-bl-none self-start"
     : "bg-gray-200 text-gray-900 rounded-bl-none self-start";
 
+  // Wallet substring
+  const walletSubstring = msg.sender_wallet
+    ? `${msg.sender_wallet.slice(0, 6)}...${msg.sender_wallet.slice(-4)}`
+    : "Unknown";
+
   return (
     <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
       <div className={`max-w-[75%] p-2 rounded-2xl shadow ${bubbleStyle}`}>
+        {/* Wallet Tag */}
+        <div className="text-[10px] opacity-70 mb-1">
+          {isMe ? "You" : isMediator ? "Mediator" : walletSubstring}
+        </div>
+
+        {/* Attachment preview or link */}
         {msg.attachment_url && (
           msg.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
             <img
@@ -398,8 +413,12 @@ function MessageBubble({ msg, userWallet, darkMode }) {
             </a>
           )
         )}
+
+        {/* Text message */}
         <p className="text-sm">{msg.message}</p>
       </div>
+
+      {/* Timestamp */}
       <span className="text-[10px] opacity-70 mt-1">
         {new Date(msg.created_at).toLocaleTimeString([], {
           hour: "2-digit",

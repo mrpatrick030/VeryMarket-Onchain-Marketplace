@@ -1,234 +1,457 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
+
+import { useEffect, useState, useMemo } from "react";
+import {
+  useWeb3ModalProvider,
+  useWeb3ModalAccount,
+} from "@web3modal/ethers/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import Link from "next/link";
-import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
+import {
+  MessageSquare,
+  ShieldAlert,
+  CheckCircle2,
+  Package,
+  Timer,
+  MapPin,
+  MessageSquareText,
+  ThumbsUp,
+  ThumbsDown,
+  User,
+  Store,
+  AlertTriangle,
+  CircleCheck,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ConfirmModal from "./ConfirmModal";
+import InputModal from "./InputModal";
+import ChatModal from "./ChatModal";
+import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
+import ViewReceiptModal from "./ViewReceiptModal";
 
-// Reuse same modal structure but inline here
-function InlineModal({ open, onClose, children }) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-lg p-6 text-gray-900 dark:text-gray-100"
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-export default function DisputesTab({ pushToast, darkMode }) {
+export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], darkMode }) {
   const { walletProvider } = useWeb3ModalProvider();
   const { address } = useWeb3ModalAccount();
 
+  const [contract, setContract] = useState(null);
+  const [mediator, setMediator] = useState(null);
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  //Input modal for resolving dispute
+  const [inputOpen, setInputOpen] = useState(false);
+  const [inputConfig, setInputConfig] = useState({ title: "", fields: [], onSubmit: () => {} });
+
+  // pagination (matching Orders tab)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const end = Math.min(currentPage * ITEMS_PER_PAGE, disputes.length);
+  const totalPages = Math.max(1, Math.ceil(disputes.length / ITEMS_PER_PAGE));
+  const paginated = useMemo(() => {
+    const s = (currentPage - 1) * ITEMS_PER_PAGE;
+    return disputes.slice(s, s + ITEMS_PER_PAGE);
+  }, [disputes, currentPage]);
+
+  // modals & chat
   const [resolveOpen, setResolveOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({ title: "", message: "", onConfirm: () => {} });
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [refundToBuyer, setRefundToBuyer] = useState("");
   const [payoutToSeller, setPayoutToSeller] = useState("");
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatWith, setChatWith] = useState(null);
 
-  const getContract = async () => {
-    if (!walletProvider) throw new Error("Wallet not connected");
-    const provider = new BrowserProvider(walletProvider);
-    const signer = await provider.getSigner();
-    return new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
-  };
+  // framer variants
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
+  const cardVariants = { hidden: { opacity: 0, y: 12, scale: 0.99 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.25 } } };
 
-  const fetchDisputes = async () => {
-    try {
-      const contract = await getContract();
-      const openDisputes = await contract.getAllOpenDisputes();
-      setDisputes(openDisputes);
-    } catch (err) {
-      console.log("Failed to fetch disputes:", err);
-    }
-  };
+  // Inline modal (resolve)
+  function InlineModal({ open, onClose, children }) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.18 }} className={`relative w-full max-w-md rounded-2xl shadow-lg p-6 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
+              <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
+                <X className="w-5 h-5" />
+              </button>
+              {children}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
+  // init contract + mediator
   useEffect(() => {
-    fetchDisputes();
+    if (!walletProvider) return;
+    (async () => {
+      try {
+        const provider = new BrowserProvider(walletProvider);
+        const signer = await provider.getSigner();
+        const c = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
+        setContract(c);
+        try {
+          const med = await c.mediator();
+          setMediator(med);
+        } catch (err) {
+          console.log("mediator not present/readable:", err?.message || err);
+        }
+      } catch (err) {
+        console.error("contract init: ", err);
+      }
+    })();
   }, [walletProvider]);
 
-  const handleResolve = async () => {
-    if (!refundToBuyer || !payoutToSeller) {
-      return pushToast("Error", "Both fields are required", "error");
-    }
-
+  // load disputes from contract
+  const loadDisputes = async () => {
+    if (!contract) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const contract = await getContract();
-      const refundWei = parseUnits(refundToBuyer.toString(), 18);
-      const payoutWei = parseUnits(payoutToSeller.toString(), 18);
-
-      const tx = await contract.resolveDispute(selectedOrder.id, refundWei, payoutWei);
-      await tx.wait();
-
-      pushToast("Success", "Dispute resolved successfully", "success");
-      setResolveOpen(false);
-      setRefundToBuyer("");
-      setPayoutToSeller("");
-      fetchDisputes();
+      const raw = await contract.getAllDisputes();
+      // normalize like orders
+      const normalized = raw.map((o) => ({
+        id: Number(o.id),
+        buyer: o.buyer,
+        seller: o.seller,
+        listingId: Number(o.listingId),
+        storeId: Number(o.storeId),
+        paymentToken: o.paymentToken,
+        amountRaw: o.amount,
+        amount: Number(formatUnits(o.amount, 18)),
+        quantity: Number(o.quantity),
+        shippingFeeRaw: o.shippingFee,
+        shippingFee: Number(formatUnits(o.shippingFee, 18)),
+        etaDays: Number(o.estimatedDeliveryDays || 0),
+        buyerLocation: o.buyerLocation,
+        status: Number(o.status),
+        uri: o.uri,
+        title: o.title,
+        disputeInitiator: o.disputeInitiator,
+        previousStatusBeforeDispute: o.previousStatusBeforeDispute ?? o.previousStatus, // try both
+        fundsEscrowed: o.fundsEscrowed,
+        completed: o.completed,
+        buyerComment: o.buyerComment,
+        rated: o.rated,
+        createdAt: Number(o.createdAt) ? Number(o.createdAt) * 1000 : null,
+        receiptTokenId: o.receiptTokenId, 
+        receiptURI: o.receiptURI,
+      })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setDisputes(normalized);
+      setCurrentPage(1);
     } catch (err) {
-      console.log("Resolve dispute failed:", err);
-      pushToast("Error", "Failed to resolve dispute", "error");
+      console.log("loadDisputes err", err);
+      pushToast?.("error", "Failed to load disputes");
     } finally {
       setLoading(false);
     }
   };
 
-  const paginatedDisputes = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return disputes.slice(start, start + itemsPerPage);
-  }, [disputes, currentPage]);
+  useEffect(() => {
+    if (contract) loadDisputes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract]);
 
-  const totalPages = Math.ceil(disputes.length / itemsPerPage);
+  // helpers: confirm modal
+  const askConfirm = (title, message, onConfirm) => {
+    setConfirmConfig({ title, message, onConfirm });
+    setConfirmOpen(true);
+  };
 
+
+  // Cancel dispute (buyer or seller)
+  const handleCancelDispute = async (order) => {
+    askConfirm("Cancel Dispute", "Are you sure you want to cancel this dispute?", async () => {
+      try {
+        setLoading(true);
+        const tx = await contract.cancelDispute(order.id);
+        await tx.wait();
+        pushToast?.("success", "Dispute cancelled");
+        await loadDisputes();
+      } catch (err) {
+        console.log("cancelDispute err", err);
+        pushToast?.("error", "Failed to cancel dispute");
+      } finally {
+        setLoading(false);
+      }
+    });
+  };
+
+  // handleResolve by mediator
+  const handleResolve = (order, tokenName) => {
+  setSelectedOrder(order);
+  setInputConfig({
+    title: `Resolve Dispute - Order #${order.id}`,
+    fields: [
+      {
+        name: "refundAmount",
+        label: `Refund to Buyer (${tokenName})`,
+        type: "number",
+        placeholder: "e.g. 0.5",
+      },
+      {
+        name: "sellerPayout",
+        label: `Payout to Seller (${tokenName})`,
+        type: "number",
+        placeholder: "e.g. 1.0",
+      },
+    ],
+    onSubmit: async (values) => {
+      if (!contract) return pushToast?.("error", "Wallet not connected");
+
+      try {
+        setLoading(true);
+
+        // Step 1️⃣ — Prepare on-chain values
+        const refundWei = parseUnits(values.refundAmount.toString() || "0", 18);
+        const payoutWei = parseUnits(values.sellerPayout.toString() || "0", 18);
+
+        // Step 2️⃣ — Build NFT metadata for the receipt
+        const metadata = {
+          name: `Order #${order.id} Dispute Resolution`,
+          description: `Resolution record for order #${order.id}.`,
+          image: order.uri || "/default-receipt.png", // optional image field
+          attributes: [
+            { trait_type: "Buyer", value: order.buyer },
+            { trait_type: "Seller", value: order.seller },
+            { trait_type: "Title", value: order.title },
+            { trait_type: "Store Id", value: (Intl.NumberFormat().format(order.storeId).toString()).padStart(3, "0") },
+            { trait_type: "Token", value: tokenName },
+            { trait_type: "Refund To Buyer", value: values.refundAmount },
+            { trait_type: "Payout To Seller", value: values.sellerPayout },
+            { trait_type: "Status", value: "Dispute Resolved" },
+            { trait_type: "Dispute resolved", value: new Date().toLocaleString() },
+          ],
+        };
+
+        const uploadRes = await fetch("/api/UploadNFTmetadata", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(metadata),
+        });
+
+        const { tokenURI } = await uploadRes.json();
+        if (!tokenURI) throw new Error("Failed to upload metadata");
+
+        // Step 4️⃣ — Call contract with tokenURI
+        const tx = await contract.resolveDispute(order.id, refundWei, payoutWei, tokenURI);
+        await tx.wait();
+
+        pushToast?.("success", "✅ Dispute resolved and receipt NFT minted!");
+        await loadDisputes();
+      } catch (err) {
+        console.error("resolveDispute error:", err);
+        pushToast?.("error", err?.message || "Failed to resolve dispute");
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+  setInputOpen(true);
+};
+
+  // formatting date
+  const displayDate = (ts) => {
+    if (!ts) return "";
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return "";
+    }
+  };
+
+    //for the receipt modal
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  
+  const openReceiptModal = (order) => {
+    setSelectedOrder(order);
+    setShowReceiptModal(true);
+  };
+  
+  const closeReceiptModal = () => {
+    setSelectedOrder(null);
+    setShowReceiptModal(false);
+  };
+
+  // If wallet not connected
   if (!walletProvider) {
-    return (
-      <div
-        className={`p-6 rounded-lg ${
-          darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"
-        }`}
-      >
-        Please connect your wallet to view and resolve disputes.
-      </div>
-    );
+    return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view disputes.</div>;
   }
 
   return (
-    <div className={`p-6 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
-      <h1 className="text-xl font-bold mb-4">Disputes</h1>
+    <div className={`space-y-6 p-5 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Disputes</h2>
+        <div className="text-sm text-gray-500">
+          Showing {start} - {end} of {disputes.length} {disputes.length > 1 ? "disputes" : "dispute"}
+        </div>
+      </div>
 
-      {disputes.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center">No disputes found.</p>
-      ) : (
-        <>
-          <AnimatePresence>
-            {paginatedDisputes.map((order, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25 }}
-                className="p-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow mb-3"
-              >
-                <p>
-                  <span className="font-semibold">Order ID:</span> {order.id.toString()}
-                </p>
-                <p>
-                  <span className="font-semibold">Buyer:</span> {order.buyer}
-                </p>
-                <p>
-                  <span className="font-semibold">Seller:</span> {order.seller}
-                </p>
-                <p>
-                  <span className="font-semibold">Amount:</span> {formatUnits(order.amount, 18)} TOKEN
-                </p>
-                <p>
-                  <span className="font-semibold">Shipping Fee:</span>{" "}
-                  {formatUnits(order.shippingFee, 18)} TOKEN
-                </p>
+      {loading && <div className="text-center text-sm text-gray-500 py-4">Loading...</div>}
 
-                <button
-                  className="mt-3 px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setResolveOpen(true);
-                  }}
-                >
-                  Resolve Dispute
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Pagination */}
-          <div className="flex justify-center items-center gap-3 mt-6">
-            <button
-              className="flex items-center gap-1 px-3 py-2 border rounded disabled:opacity-50 dark:border-gray-600"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" /> Prev
-            </button>
-
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              Page {currentPage} of {totalPages}
-            </span>
-
-            <button
-              className="flex items-center gap-1 px-3 py-2 border rounded disabled:opacity-50 dark:border-gray-600"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-            >
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </>
+      {disputes.length === 0 && !loading && (
+        <div className="text-center text-gray-400 py-8">No disputes found.</div>
       )}
 
-      {/* Modal */}
-      <InlineModal open={resolveOpen} onClose={() => setResolveOpen(false)}>
-        <h2 className="text-lg font-semibold mb-4">
-          Resolve Dispute - Order #{selectedOrder?.id?.toString()}
-        </h2>
+      <AnimatePresence mode="wait">
+        <motion.div key={currentPage} variants={containerVariants} initial="hidden" animate="show" exit={{ opacity: 0 }} className="grid gap-5">
+          {paginated.map((o) => {
+            const mineBuyer = o.buyer?.toLowerCase() === address?.toLowerCase();
+            const mineSeller = o.seller?.toLowerCase() === address?.toLowerCase();
+            const isMediator = mediator && mediator.toLowerCase() === address?.toLowerCase();
+            const tokenInfo = TOKEN_LOGOS[o.paymentToken] || { logo: "/logos/default.svg", name: "TOKEN" };
+            const isResolved = o.status === 9;
 
-        <label className="block text-sm mb-2">Refund to Buyer</label>
-        <input
-          type="number"
-          step="0.0001"
-          placeholder="e.g. 0.5"
-          value={refundToBuyer}
-          onChange={(e) => setRefundToBuyer(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-        />
+            const cardBg = isResolved
+              ? (darkMode ? "bg-gray-800 border-green-700 shadow-lg" : "bg-gray-50 border-green-800 shadow-lg")
+              : (darkMode ? "bg-red-900/20 border-red-700/30 shadow-lg" : "bg-red-50 border-red-200 shadow-lg");
 
-        <label className="block text-sm mb-2">Payout to Seller</label>
-        <input
-          type="number"
-          step="0.0001"
-          placeholder="e.g. 1.0"
-          value={payoutToSeller}
-          onChange={(e) => setPayoutToSeller(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-        />
+             let statusLabel = STATUS?.[o.status] ?? "Unknown";
+             if (statusLabel === "DisputeResolved" || o.status === 9) {
+             statusLabel = "Dispute Resolved";
+            }
+             else if (statusLabel === "Disputed" || o.status === 5) {
+             statusLabel = "Disputed";
+            }
 
-        <button
-          onClick={handleResolve}
-          disabled={loading}
-          className="w-full px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
-        >
-          {loading ? "Processing..." : "Submit Resolution"}
-        </button>
-      </InlineModal>
+            return (
+              <motion.div key={`${o.id}-${o.listingId}`} variants={cardVariants} className={`p-5 rounded-xl border ${cardBg}`}>
+                {/* header */}
+                <div className="flex justify-between items-center border-b pb-2 mb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold flex items-center gap-1">📦 Order #{o.id} • 🏷️ Listing #{o.listingId}</span>
+    <span
+      className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}
+    >
+      {o.status === 1 && "🟡 "}{o.status === 2 && "🔵 "}{o.status === 3 && "🟣 "}
+      {(o.status === 4 || o.status === 9) && "🟢 "}{(o.status === 5 || o.status === 8) && "🔴 "}
+      {statusLabel}
+    </span>
+    {(o.completed && o.status !== 9) && (
+      <CircleCheck size={18} className={`${darkMode ? "text-green-400" : "text-green-600"}`} />
+    )}
+
+                    {(o.disputeInitiator && o.status === 5 && o.disputeInitiator !== "0x0000000000000000000000000000000000000000") && (
+                      <span className="flex items-center gap-1 text-red-500 text-xs">
+                        <AlertTriangle size={14} /> Dispute by {o.disputeInitiator.slice(0, 6)}...{o.disputeInitiator.slice(-4)}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{displayDate(o.createdAt)}</span>
+                </div>
+
+                {/* product info */}
+                <div className="flex items-center gap-3 mb-4">
+                  <img src={o.uri} alt={o.title} className="w-16 h-16 rounded-lg object-cover border" />
+                  <div>
+                    <h3 className={`font-semibold ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{o.title || "Untitled Product"}</h3>
+                  </div>
+                </div>
+
+                {/* details grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
+                    <p className="flex items-center gap-1"><Package size={14} /> <span className="font-medium">Quantity:</span> {o.quantity}</p>
+                    <p className="flex items-center gap-1"><Timer size={14} /> <span className="font-medium">Estimated Delivery:</span> 
+                    {o.etaDays ? `${o.etaDays} ${o.etaDays === 1 ? "day" : "days"}` : <span className="italic text-gray-400">{o.status === 1 ? (mineBuyer ? "To be set by seller" : "Please set delivery time") : ""}</span>}
+                    </p>
+                    <p className="flex items-center gap-1"><MapPin size={14} /> <span className="font-medium">{mineBuyer ? "Your" : "Buyer's"} Location:</span> {o.buyerLocation}</p>
+                    {o.buyerComment && (<p className="flex items-center gap-1"><MessageSquareText size={14} /> <span className="font-medium">{mineBuyer ? "Your" : "Buyer's"} Comment:</span> {o.buyerComment}</p>)}
+                    {o.rated && (<p className="flex items-center gap-1">{o.rated === true ? <ThumbsUp size={18} className="text-green-500" /> : <ThumbsDown size={18} className="text-red-500" />} <span className="font-medium">{mineBuyer ? "How you rated seller:" : isMediator ? "How buyer rated seller:" : "How buyer rated you:"}</span> {o.rated === true ? "Good" : "Bad"}</p>)}
+                  </div>
+
+                  <div className={`${darkMode ? "text-gray-300" : "text-gray-700"} space-y-2`}>
+                    <p className="flex items-center gap-1"><User size={14} /> <span className="font-medium text-blue-600">Buyer:</span> <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-800"}`}>{o.buyer.slice(0,6)}...{o.buyer.slice(-4)}</span></p>
+                    <p className="flex items-center gap-1"><User size={14} /> <span className="font-medium text-purple-600">Seller:</span> <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-purple-900 text-purple-200" : "bg-purple-100 text-purple-800"}`}>{o.seller.slice(0,6)}...{o.seller.slice(-4)}</span></p>
+                    <p className="flex items-center gap-1"><Store size={14} /> <span className="font-medium">Store ID:</span> <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-800"}`}>🏬 {String(o.storeId ?? 0).padStart(3,"0")}</span></p>
+                  </div>
+                </div>
+
+                {/* price & actions */}
+                <div>
+                  <div className="flex justify-end items-center gap-2 mt-4">
+                    <img src={tokenInfo.logo} alt={tokenInfo.name} className="w-6 h-6" />
+                    <div className={`text-right ${darkMode ? "text-gray-100" : "text-gray-700"}`}>
+                      <div className="font-semibold">{Intl.NumberFormat().format(o.amount)} {tokenInfo.name}</div>
+                      <div className="text-xs text-gray-500">Shipping: {Intl.NumberFormat().format(o.shippingFee) ?? 0} {tokenInfo.name}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap mt-4 gap-2">
+                    <button onClick={() => { setSelectedOrder(o); setChatWith(mineBuyer ? o.seller : o.buyer); setChatOpen(true); }} className="px-3 py-1 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"><MessageSquare size={16} /> Chat</button>
+
+                    {/* mediator resolve */}
+                    { (isMediator && !isResolved) && (
+                      <button onClick={() => { handleResolve(o, tokenInfo.name) }} className="px-3 py-1 rounded-md text-sm bg-yellow-600 text-white hover:bg-yellow-700 flex items-center gap-2">Resolve Dispute</button>
+                    )}
+
+                    {/* buyer/seller/mediator cancel */}
+                    { (isMediator && !isResolved) && (
+                      <button onClick={() => handleCancelDispute(o)} className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-2">Cancel Dispute</button>
+                    )}
+
+                    {/* View Receipt Button (only if NFT exists) */}
+                    { (isMediator && isResolved && o.receiptURI) && (
+                    <button
+                    onClick={() => {
+                    openReceiptModal(o)
+                    }}
+                    className="px-3 py-1 rounded-md text-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+                     >
+                    🧾 View Receipt
+                    </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center items-center gap-2 flex-wrap">
+          <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className={`px-4 py-2 rounded-lg border transition-colors ${darkMode ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50" : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"}`}>Prev</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button key={page} onClick={() => setCurrentPage(page)} className={`px-4 py-2 rounded-lg border font-medium transition ${page === currentPage ? "bg-blue-500 border-blue-500 text-white" : darkMode ? "border-gray-700 text-gray-200 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-200"}`}>{page}</button>
+          ))}
+          <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-4 py-2 rounded-lg border transition-colors ${darkMode ? "border-gray-700 text-gray-200 hover:bg-gray-700 disabled:opacity-50" : "border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-50"}`}>Next</button>
+        </div>
+      )}
+
+  {/* Input Modal */}
+  <InputModal
+    isOpen={inputOpen}
+    onClose={() => setInputOpen(false)}
+    title={inputConfig.title}
+    fields={inputConfig.fields}
+    onSubmit={(values) => {
+      setInputOpen(false);
+      try {
+        inputConfig.onSubmit(values);
+      } catch (e) {
+        console.log(e);
+      }
+    }}
+  />
+
+      {/* Chat Modal (reused from Orders tab) */}
+      <ChatModal open={chatOpen} onClose={() => { setChatOpen(false); setChatWith(null); }} userWallet={address} chatWith={chatWith} orderId={selectedOrder?.id} userRole={ (address === selectedOrder?.buyer) ? "buyer" : (address === selectedOrder?.seller) ? "seller" : (mediator && mediator.toLowerCase() === address?.toLowerCase() ? "mediator" : "viewer") } darkMode={darkMode} />
+
+    {/* receipt modal */}
+    <ViewReceiptModal
+      isOpen={showReceiptModal}
+      onClose={() => closeReceiptModal()}
+      order={selectedOrder}
+    />
     </div>
   );
 }

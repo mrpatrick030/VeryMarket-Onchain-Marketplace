@@ -4,6 +4,11 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./ReceiptNFT.sol";
+
+ interface IReceiptNFT {
+ function mintReceipt(address buyer, uint256 orderId, string calldata ipfsUri) external returns (uint256);
+ }
 
 /**
  VeryMarket Marketplace
@@ -86,6 +91,9 @@ contract Marketplace is ReentrancyGuard, Ownable {
         //dispute related below
         OrderStatus previousStatusBeforeDispute;   // track what status to revert to
         address disputeInitiator; // track who initiated the dispute
+        // receipt related
+        uint256 receiptTokenId;       // NFT token ID
+        string receiptURI;     // NFT metadata URI
     }
 
     // fees & roles
@@ -140,6 +148,7 @@ contract Marketplace is ReentrancyGuard, Ownable {
     event OrderCanceledByBuyer(uint256 indexed orderId);
     event OrderCancelledBySeller(uint256 indexed orderId, uint256 indexed listingId);
     event SellerRated(uint256 indexed storeId, address indexed buyer, bool positive, string comment);
+    event ReceiptMinted(uint256 indexed orderId, uint256 indexed tokenId, string tokenURI);
 
     constructor(
         uint96 _feeBps,
@@ -164,6 +173,15 @@ contract Marketplace is ReentrancyGuard, Ownable {
             }
         }
     }
+
+    //For NFT Receipts
+    IReceiptNFT public receiptNFT;
+
+    function setReceiptNFT(address _receiptNFT) external onlyOwner {
+    receiptNFT = IReceiptNFT(_receiptNFT);
+}
+
+
 
     // ---------------- STORES ----------------
 
@@ -264,9 +282,9 @@ contract Marketplace is ReentrancyGuard, Ownable {
     ) external returns (uint256 id) {
         require(price > 0, "price=0");
         require(quantity > 0, "quantity=0");
-        require(approvedTokens[paymentToken], "token not approved");
-        require(storeId != 0 && stores[storeId].exists, "invalid store");
-        require(stores[storeId].owner == msg.sender, "not store owner");
+        require(approvedTokens[paymentToken], "Not approved");
+        require(storeId != 0 && stores[storeId].exists, "Invalid store");
+        require(stores[storeId].owner == msg.sender, "Not store owner");
 
         listingCount += 1;
         id = listingCount;
@@ -340,7 +358,7 @@ function updateListing(
         returns (uint256 id)
     {
         Listing storage L = listings[listingId];
-        require(L.active, "listing inactive");
+        require(L.active, "Inactive");
         require(quantity > 0 && quantity <= L.quantity, "bad qty");
 
         orderCount += 1;
@@ -367,7 +385,9 @@ function updateListing(
             rated: false,
             createdAt: uint64(block.timestamp),
             previousStatusBeforeDispute: OrderStatus.None,
-            disputeInitiator: address(0)
+            disputeInitiator: address(0),
+            receiptTokenId: 0,
+            receiptURI: ""
         });
 
         userOrders[msg.sender].push(id);
@@ -416,39 +436,53 @@ function updateListing(
         emit MarkedShipped(orderId);
     }
 
-    function confirmDelivery(uint256 orderId, bool positive, string calldata comment) external nonReentrant {
-        Order storage O = orders[orderId];
-        require(msg.sender == O.buyer, "not buyer");
-        require(O.status == OrderStatus.Shipped, "bad status");
 
-        uint256 total = O.amount + O.shippingFee;
-        uint256 feeAmt = (total * feeBps) / 10000;
-        uint256 sellerAmt = total - feeAmt;
+function confirmDelivery(
+    uint256 orderId,
+    bool positive,
+    string calldata comment,
+    string calldata tokenURI
+) external nonReentrant {
+    Order storage O = orders[orderId];
+    require(msg.sender == O.buyer, "not buyer");
+    require(O.status == OrderStatus.Shipped, "bad status");
 
-        if (O.paymentToken == address(0)) {
-            payable(O.seller).transfer(sellerAmt);
-            payable(feeCollector).transfer(feeAmt);
-        } else {
-            IERC20 token = IERC20(O.paymentToken);
-            token.transfer(O.seller, sellerAmt);
-            token.transfer(feeCollector, feeAmt);
-        }
+    uint256 total = O.amount + O.shippingFee;
+    uint256 feeAmt = (total * feeBps) / 10000;
+    uint256 sellerAmt = total - feeAmt;
 
-        O.status = OrderStatus.Released;
-        O.completed = true;
-        O.buyerComment = comment;
-        O.rated = true;
-
-        uint256 storeId = listings[O.listingId].storeId;
-        if (positive) {
-            stores[storeId].positiveRatings += 1;
-        } else {
-            stores[storeId].negativeRatings += 1;
-        }
-
-        emit DeliveryConfirmed(orderId, sellerAmt, feeAmt);
-        emit SellerRated(storeId, O.buyer, positive, comment);
+    if (O.paymentToken == address(0)) {
+        payable(O.seller).transfer(sellerAmt);
+        payable(feeCollector).transfer(feeAmt);
+    } else {
+        IERC20 token = IERC20(O.paymentToken);
+        token.transfer(O.seller, sellerAmt);
+        token.transfer(feeCollector, feeAmt);
     }
+
+    O.status = OrderStatus.Released;
+    O.completed = true;
+    O.buyerComment = comment;
+    O.rated = true;
+
+    uint256 storeId = listings[O.listingId].storeId;
+    if (positive) {
+        stores[storeId].positiveRatings += 1;
+    } else {
+        stores[storeId].negativeRatings += 1;
+    }
+
+    emit DeliveryConfirmed(orderId, sellerAmt, feeAmt);
+    emit SellerRated(storeId, O.buyer, positive, comment);
+
+    // Mint NFT receipt
+    if (address(receiptNFT) != address(0)) {
+        uint256 tokenId = receiptNFT.mintReceipt(O.buyer, orderId, tokenURI);
+        O.receiptTokenId = tokenId;
+        O.receiptURI = tokenURI;
+        emit ReceiptMinted(orderId, tokenId, tokenURI);
+    }
+}
 
     function buyerCancelBeforeEscrow(uint256 orderId) external {
         Order storage O = orders[orderId];
@@ -514,18 +548,18 @@ function openDispute(uint256 orderId) external {
 
 function cancelDispute(uint256 orderId) external {
     Order storage order = orders[orderId];
-    require(order.status == OrderStatus.Disputed, "Order not in dispute");
+    require(order.status == OrderStatus.Disputed, "No dispute");
     
     // either initiator or mediator can cancel
     require(
         msg.sender == order.disputeInitiator || msg.sender == mediator,
-        "Not allowed to cancel"
+        "Not allowed"
     );
 
     require(
         order.previousStatusBeforeDispute == OrderStatus.Shipped || 
         order.previousStatusBeforeDispute == OrderStatus.Escrowed,
-        "Invalid previous status"
+        "Invalid"
     );
 
     order.status = order.previousStatusBeforeDispute;
@@ -537,7 +571,8 @@ function cancelDispute(uint256 orderId) external {
 function resolveDispute(
     uint256 orderId,
     uint256 refundToBuyer,
-    uint256 payoutToSeller
+    uint256 payoutToSeller,
+    string calldata tokenURI
 ) external nonReentrant {
     require(msg.sender == mediator, "not mediator");
     Order storage O = orders[orderId];
@@ -565,6 +600,14 @@ function resolveDispute(
     O.completed = true;
 
     emit DisputeResolved(orderId, refundToBuyer, sellerNet, feeAmt);
+
+    // Mint NFT receipt
+    if (address(receiptNFT) != address(0)) {
+        uint256 tokenId = receiptNFT.mintReceipt(O.buyer, orderId, tokenURI);
+        O.receiptTokenId = tokenId;
+        O.receiptURI = tokenURI;
+        emit ReceiptMinted(orderId, tokenId, tokenURI);
+    }
 }
 
 
@@ -630,22 +673,6 @@ function resolveDispute(
         uint256 idx = 0;
         for (uint256 i = 1; i <= orderCount; i++) {
             if (orders[i].listingId == listingId) {
-                arr[idx] = orders[i];
-                idx++;
-            }
-        }
-        return arr;
-    }
-
-    function getOrdersForStore(uint256 storeId) external view returns (Order[] memory) {
-        uint256 count;
-        for (uint256 i = 1; i <= orderCount; i++) {
-            if (listings[orders[i].listingId].storeId == storeId) count++;
-        }
-        Order[] memory arr = new Order[](count);
-        uint256 idx = 0;
-        for (uint256 i = 1; i <= orderCount; i++) {
-            if (listings[orders[i].listingId].storeId == storeId) {
                 arr[idx] = orders[i];
                 idx++;
             }
@@ -744,31 +771,6 @@ function resolveDispute(
     return result;
     }
 
-   /// user disputes
-    function getUserDisputes(address user) external view returns (Order[] memory) {
-    uint256 count;
-    for (uint256 i = 1; i <= orderCount; i++) {
-        if (
-            (orders[i].status == OrderStatus.Disputed || 
-             orders[i].status == OrderStatus.DisputeResolved) &&
-            (orders[i].buyer == user || orders[i].seller == user)
-        ) count++;
-    }
-    Order[] memory arr = new Order[](count);
-    uint256 idx = 0;
-    for (uint256 i = 1; i <= orderCount; i++) {
-        if (
-            (orders[i].status == OrderStatus.Disputed || 
-             orders[i].status == OrderStatus.DisputeResolved) &&
-            (orders[i].buyer == user || orders[i].seller == user)
-        ) {
-            arr[idx] = orders[i];
-            idx++;
-        }
-    }
-    return arr;
-}
-
 
 
     // ---------------- MISC ----------------
@@ -785,3 +787,5 @@ function resolveDispute(
 
     fallback() external payable {}
 }
+
+

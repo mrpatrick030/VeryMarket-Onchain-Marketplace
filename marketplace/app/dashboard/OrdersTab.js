@@ -11,6 +11,7 @@ import InputModal from "./InputModal";
 import ChatModal from "./ChatModal"; // still available for later
 import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, CircleCheck, Package, Timer, MapPin, MessageSquareText, ThumbsUp, ThumbsDown, User, Store, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ViewReceiptModal from "./ViewReceiptModal";
 
 export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], darkMode }) {
   const { walletProvider } = useWeb3ModalProvider();
@@ -98,6 +99,8 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
         buyerComment: o.buyerComment,
         rated: o.rated,
         createdAt: Number(o.createdAt) ? Number(o.createdAt) * 1000 : null,
+        receiptTokenId: o.receiptTokenId, 
+        receiptURI: o.receiptURI,
       })).sort((a, b) => b.createdAt - a.createdAt);
       setOrders(normalized);
       setCurrentPage(1);
@@ -233,26 +236,57 @@ const openBuyerConfirmAndPay = (order) => {
     });
   };
 
-  // Buyer: confirm delivery with rating/comment (positive boolean + optional comment)
-  const openConfirmDelivery = (orderId) => {
-    askInput(
-      "Confirm Delivery & Rate Seller",
-      [
-        { name: "positive", label: "Was delivery good? (yes/no)", type: "text", placeholder: "yes or no" },
-        { name: "comment", label: "Comment", type: "text", placeholder: "Optional comment" },
-      ],
-      async (values) => {
-        const positive = String(values.positive).toLowerCase().startsWith("y");
-        const comment = values.comment || "";
-        try {
-          setLoading(true);
-          await callTx("confirmDelivery", orderId, positive, comment);
-        } finally {
-          setLoading(false);
-        }
+// Buyer: confirm delivery with rating/comment + NFT metadata upload
+const openConfirmDelivery = (orderId, orderData, tokenName) => {
+  askInput(
+    "Confirm Delivery & Rate Seller",
+    [
+      { name: "positive", label: "Was delivery good? (yes/no)", type: "text", placeholder: "yes or no" },
+      { name: "comment", label: "Comment", type: "text", placeholder: "Optional comment" },
+    ],
+    async (values) => {
+      const positive = String(values.positive).toLowerCase().startsWith("y");
+      const comment = values.comment || "";
+      setLoading(true);
+
+      try {
+        // Step 1: Upload metadata to API
+        const metadata = {
+          name: `Order #${orderId} Receipt`,
+          description: `Receipt NFT for order #${orderId} on VeryMarket`,
+          image: orderData?.uri || "/default-receipt.png",
+          attributes: [
+            { trait_type: "Buyer", value: orderData?.buyer },
+            { trait_type: "Seller", value: orderData?.seller },
+            { trait_type: "Title", value: orderData?.title },
+            { trait_type: "Store Id", value: (Intl.NumberFormat().format(orderData?.storeId).toString()).padStart(3, "0") },
+            { trait_type: "Token", value: tokenName },
+            { trait_type: "Amount", value: orderData?.amount },
+            { trait_type: "Shipping fee", value: orderData?.shippingFee },
+            { trait_type: "Delivered", value: new Date().toLocaleString() },
+          ],
+        };
+
+        const uploadRes = await fetch("/api/UploadNFTmetadata", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(metadata),
+        });
+
+        const { tokenURI } = await uploadRes.json();
+        if (!tokenURI) throw new Error("Failed to upload metadata");
+
+        // Step 2: Call contract confirmDelivery with tokenURI
+        await callTx("confirmDelivery", orderId, positive, comment, tokenURI);
+      } catch (err) {
+        console.error("Confirm delivery error:", err);
+        pushToast?.("error", err.message || "Failed to confirm delivery");
+      } finally {
+        setLoading(false);
       }
-    );
-  };
+    }
+  );
+};
 
   // Buyer: cancel before escrow
   const buyerCancelBeforeEscrow = (orderId) => {
@@ -348,6 +382,19 @@ const userRole =
     ? "seller"
     : "mediator";
 
+  //for the receipt modal
+const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+const openReceiptModal = (order) => {
+  setSelectedOrder(order);
+  setShowReceiptModal(true);
+};
+
+const closeReceiptModal = () => {
+  setSelectedOrder(null);
+  setShowReceiptModal(false);
+};
+
 
   // If not connected
   if (!walletProvider) {
@@ -364,7 +411,7 @@ const userRole =
   >
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-xl font-bold">My Orders</h2>
-      <div className="text-sm text-gray-500">Showing {start} - {end} of {orders.length} orders</div>
+      <div className="text-sm text-gray-500">Showing {start} - {end} of {orders.length} {orders.length > 1 ? "orders" : "order"}</div>
     </div>
 
     {loading && (
@@ -421,13 +468,13 @@ const userRole =
       className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1`}
     >
       {o.status === 1 && "🟡 "}{o.status === 2 && "🔵 "}{o.status === 3 && "🟣 "}
-      {o.status === 4 && "🟢 "}{(o.status === 5 || o.status === 8) && "🔴 "}
+      {(o.status === 4 || o.status === 9) && "🟢 "}{(o.status === 5 || o.status === 8) && "🔴 "}
       {statusLabel}
     </span>
-    {o.completed && (
+    {(o.completed && o.status !== 9) && (
       <CircleCheck size={18} className={`${darkMode ? "text-green-400" : "text-green-600"}`} />
     )}
-    {(o.disputeInitiator && o.disputeInitiator !== "0x0000000000000000000000000000000000000000") && (
+    {(o.disputeInitiator && o.status === 5 && o.disputeInitiator !== "0x0000000000000000000000000000000000000000") && (
       <span className="flex items-center gap-1 text-red-500 text-xs">
         <AlertTriangle size={14} /> Dispute by {o.disputeInitiator.slice(0, 6)}...
         {o.disputeInitiator.slice(-4)}
@@ -583,7 +630,7 @@ const userRole =
 
                 {mineBuyer && o.status === 4 && (
                   <button
-                    onClick={() => openConfirmDelivery(o.id)}
+                    onClick={() => openConfirmDelivery(o.id, o, tokenInfo.name)}
                     className="px-3 py-1 rounded-md text-sm bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     Confirm Delivery
@@ -648,6 +695,21 @@ const userRole =
                 >
                   <MessageSquare size={16} /> Chat
                 </button>
+
+                <div className="flex items-center gap-2">
+
+            {/* View Receipt Button (only if NFT exists) */}
+            {o.receiptURI && (
+            <button
+            onClick={() => {
+            openReceiptModal(o)
+            }}
+            className="px-3 py-1 rounded-md text-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+            >
+            🧾 View Receipt
+            </button>
+            )}
+           </div>
               </div>
             </motion.div>
           );
@@ -748,6 +810,13 @@ const userRole =
   orderId={selectedOrder?.id}
   userRole={userRole}
   darkMode={darkMode}
+/>
+
+{/* receipt modal */}
+<ViewReceiptModal
+  isOpen={showReceiptModal}
+  onClose={() => closeReceiptModal()}
+  order={selectedOrder}
 />
 
 

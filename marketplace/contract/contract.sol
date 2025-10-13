@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -167,33 +167,33 @@ contract Marketplace is ReentrancyGuard, Ownable {
 
     // ---------------- STORES ----------------
 
-function createStore(
-    string calldata name,
-    string calldata description,
-    string calldata location,
-    string calldata phoneNumber,
-    string calldata image
-) external returns (uint256 id) {
-    require(storeByOwner[msg.sender] == 0, "store exists");
-    storeCount += 1;
-    id = storeCount;
+    function createStore(
+        string calldata name,
+        string calldata description,
+        string calldata location,
+        string calldata phoneNumber,
+        string calldata image
+    ) external returns (uint256 id) {
+        require(storeByOwner[msg.sender] == 0, "store exists");
+        storeCount += 1;
+        id = storeCount;
 
-    Store storage S = stores[id];
-    S.id = id;
-    S.owner = msg.sender;
-    S.name = name;
-    S.description = description;
-    S.location = location;
-    S.phoneNumber = phoneNumber;
-    S.image = image;
-    S.positiveRatings = 0;
-    S.negativeRatings = 0;
-    S.exists = true;
+        stores[id] = Store({
+            id: id,
+            owner: msg.sender,
+            name: name,
+            description: description,
+            location: location,
+            phoneNumber: phoneNumber,
+            image: image,
+            positiveRatings: 0,
+            negativeRatings: 0,
+            exists: true
+        });
 
-    storeByOwner[msg.sender] = id;
-    emit StoreCreated(id, msg.sender, name, image);
-}
-
+        storeByOwner[msg.sender] = id;
+        emit StoreCreated(id, msg.sender, name, image);
+    }
 
     function updateStore(
         uint256 storeId,
@@ -251,44 +251,44 @@ function createStore(
 
     // ---------------- LISTINGS ----------------
 
-function createListing(
-    address paymentToken,
-    uint256 price,
-    string calldata title,
-    string calldata uri,
-    uint256 quantity,
-    uint256 storeId,
-    string calldata category,
-    string calldata dateAdded,
-    string calldata description
-) external returns (uint256 id) {
-    require(price > 0, "price=0");
-    require(quantity > 0, "quantity=0");
-    require(approvedTokens[paymentToken], "token not approved");
-    require(storeId != 0 && stores[storeId].exists, "invalid store");
-    require(stores[storeId].owner == msg.sender, "not store owner");
+    function createListing(
+        address paymentToken,
+        uint256 price,
+        string calldata title,
+        string calldata uri,
+        uint256 quantity,
+        uint256 storeId,
+        string calldata category,
+        string calldata dateAdded,
+        string calldata description
+    ) external returns (uint256 id) {
+        require(price > 0, "price=0");
+        require(quantity > 0, "quantity=0");
+        require(approvedTokens[paymentToken], "token not approved");
+        require(storeId != 0 && stores[storeId].exists, "invalid store");
+        require(stores[storeId].owner == msg.sender, "not store owner");
 
-    listingCount += 1;
-    id = listingCount;
+        listingCount += 1;
+        id = listingCount;
 
-    Listing storage L = listings[id];
-    L.id = id;
-    L.seller = msg.sender;
-    L.paymentToken = paymentToken;
-    L.price = price;
-    L.title = title;
-    L.uri = uri;
-    L.active = true;
-    L.quantity = quantity;
-    L.initialQuantity = quantity;
-    L.storeId = storeId;
-    L.category = category;
-    L.dateAdded = dateAdded;
-    L.description = description;
+        listings[id] = Listing({
+            id: id,
+            seller: msg.sender,
+            paymentToken: paymentToken,
+            price: price,
+            title: title,
+            uri: uri,
+            active: true,
+            quantity: quantity,
+            initialQuantity: quantity,
+            storeId: storeId,
+            category: category,
+            dateAdded: dateAdded,
+            description: description
+        });
 
-    emit ListingCreated(id, msg.sender, storeId, paymentToken, price, title, quantity);
-}
-
+        emit ListingCreated(id, msg.sender, storeId, paymentToken, price, title, quantity);
+    }
 
 function updateListing(
     uint256 listingId,
@@ -335,47 +335,48 @@ function updateListing(
 
     // ---------------- ORDERS ----------------
 
-function createOrderRequest(
-    uint256 listingId,
-    uint256 quantity,
-    string calldata buyerLocation
-) external returns (uint256 id) {
-    Listing storage L = listings[listingId];
-    require(L.active, "listing inactive");
-    require(quantity > 0 && quantity <= L.quantity, "bad qty");
+    function createOrderRequest(uint256 listingId, uint256 quantity, string calldata buyerLocation)
+        external
+        returns (uint256 id)
+    {
+        Listing storage L = listings[listingId];
+        require(L.active, "listing inactive");
+        require(quantity > 0 && quantity <= L.quantity, "bad qty");
 
-    id = ++orderCount;
-    _initOrder(id, L, quantity, buyerLocation);
-    emit OrderRequested(id, listingId, msg.sender, quantity);
-}
+        orderCount += 1;
+        id = orderCount;
 
-function _initOrder(
-    uint256 id,
-    Listing storage L,
-    uint256 quantity,
-    string calldata buyerLocation
-) internal {
-    Order storage o = orders[id];
-    o.id = id;
-    o.buyer = msg.sender;
-    o.seller = L.seller;
-    o.listingId = L.id;
-    o.storeId = L.storeId;
-    o.paymentToken = L.paymentToken;
-    o.amount = L.price * quantity;
-    o.quantity = quantity;
-    o.uri = L.uri;
-    o.title = L.title;
-    o.status = OrderStatus.Requested;
-    o.createdAt = uint64(block.timestamp);
-    o.buyerLocation = buyerLocation;
+        orders[id] = Order({
+            id: id,
+            buyer: msg.sender,
+            seller: L.seller,
+            listingId: listingId,
+            storeId: L.storeId,  
+            paymentToken: L.paymentToken,
+            amount: L.price * quantity,
+            quantity: quantity,
+            uri: L.uri,
+            title: L.title,
+            shippingFee: 0,
+            estimatedDeliveryDays: 0,
+            buyerLocation: buyerLocation,
+            status: OrderStatus.Requested,
+            fundsEscrowed: false,
+            completed: false,
+            buyerComment: "",
+            rated: false,
+            createdAt: uint64(block.timestamp),
+            previousStatusBeforeDispute: OrderStatus.None,
+            disputeInitiator: address(0)
+        });
 
-    userOrders[msg.sender].push(id);
-    userOrders[L.seller].push(id);
-    L.quantity -= quantity;
-}
+        userOrders[msg.sender].push(id);
+        userOrders[L.seller].push(id);
 
+        L.quantity -= quantity;
 
+        emit OrderRequested(id, listingId, msg.sender, quantity);
+    }
 
     function sellerSetShipping(uint256 orderId, uint256 shippingFee, uint16 etaDays) external {
         Order storage O = orders[orderId];
@@ -766,55 +767,6 @@ function resolveDispute(
         }
     }
     return arr;
-}
-
-    /// Return disputed orders involving the given user (buyer or seller)
-    function getUserOpenDisputes(address user) external view returns (Order[] memory) {
-        uint256 count;
-        for (uint256 i = 1; i <= orderCount; i++) {
-            if (
-                orders[i].status == OrderStatus.Disputed &&
-                (orders[i].buyer == user || orders[i].seller == user)
-            ) count++;
-        }
-        Order[] memory arr = new Order[](count);
-        uint256 idx = 0;
-        for (uint256 i = 1; i <= orderCount; i++) {
-            if (
-                orders[i].status == OrderStatus.Disputed &&
-                (orders[i].buyer == user || orders[i].seller == user)
-            ) {
-                arr[idx] = orders[i];
-                idx++;
-            }
-        }
-        return arr;
-    }
-
-   function getUserResolvedDisputes(address user) external view returns (Order[] memory) {
-    uint256 count = 0;
-    for (uint256 i = 1; i <= orderCount; i++) {
-        if (
-            orders[i].status == OrderStatus.DisputeResolved &&
-            (orders[i].buyer == user || orders[i].seller == user)
-        ) {
-            count++;
-        }
-    }
-
-    Order[] memory result = new Order[](count);
-    uint256 idx = 0;
-    for (uint256 i = 1; i <= orderCount; i++) {
-        if (
-            orders[i].status == OrderStatus.DisputeResolved &&
-            (orders[i].buyer == user || orders[i].seller == user)
-        ) {
-            result[idx] = orders[i];
-            idx++;
-        }
-    }
-
-    return result;
 }
 
 
