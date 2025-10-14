@@ -181,7 +181,6 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
         const tx = await contract.cancelDispute(order.id);
         await tx.wait();
         pushToast?.("success", "Dispute cancelled");
-        await loadDisputes();
       } catch (err) {
         console.log("cancelDispute err", err);
         pushToast?.("error", "Failed to cancel dispute");
@@ -252,7 +251,6 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
         await tx.wait();
 
         pushToast?.("success", "✅ Dispute resolved and receipt NFT minted!");
-        await loadDisputes();
       } catch (err) {
         console.error("resolveDispute error:", err);
         pushToast?.("error", err?.message || "Failed to resolve dispute");
