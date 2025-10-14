@@ -145,6 +145,15 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
       })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setDisputes(normalized);
       setCurrentPage(1);
+
+    // Real-time event listeners
+    contract.on("DisputeOpened", loadDisputes);
+    contract.on("DisputeCancelled", loadDisputes);
+    contract.on("DisputeResolved", loadDisputes);
+    contract.on("ReceiptMinted", loadDisputes);
+    return () => {
+      contract.removeAllListeners();
+    };
     } catch (err) {
       console.log("loadDisputes err", err);
       pushToast?.("error", "Failed to load disputes");
@@ -155,7 +164,6 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
 
   useEffect(() => {
     if (contract) loadDisputes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract]);
 
   // helpers: confirm modal
@@ -394,7 +402,7 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
 
                     {/* buyer/seller/mediator cancel */}
                     { (isMediator && !isResolved) && (
-                      <button onClick={() => handleCancelDispute(o)} className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-2">Cancel Dispute</button>
+                      <button onClick={() => { handleCancelDispute(o) }} className="px-3 py-1 rounded-md text-sm bg-red-600 text-white hover:bg-red-700 flex items-center gap-2">Cancel Dispute</button>
                     )}
 
                     {/* View Receipt Button (only if NFT exists) */}
@@ -427,6 +435,22 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
         </div>
       )}
 
+  {/* Confirm Modal */}
+  <ConfirmModal
+    isOpen={confirmOpen}
+    onClose={() => setConfirmOpen(false)}
+    title={confirmConfig.title}
+    message={confirmConfig.message}
+    onConfirm={() => {
+      setConfirmOpen(false);
+      try {
+        confirmConfig.onConfirm();
+      } catch (e) {
+        console.log(e);
+      }
+    }}
+  />
+
   {/* Input Modal */}
   <InputModal
     isOpen={inputOpen}
@@ -443,7 +467,7 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
     }}
   />
 
-      {/* Chat Modal (reused from Orders tab) */}
+      {/* Chat Modal */}
       <ChatModal open={chatOpen} onClose={() => { setChatOpen(false); setChatWith(null); }} userWallet={address} chatWith={chatWith} orderId={selectedOrder?.id} userRole={ (address === selectedOrder?.buyer) ? "buyer" : (address === selectedOrder?.seller) ? "seller" : (mediator && mediator.toLowerCase() === address?.toLowerCase() ? "mediator" : "viewer") } darkMode={darkMode} />
 
     {/* receipt modal */}

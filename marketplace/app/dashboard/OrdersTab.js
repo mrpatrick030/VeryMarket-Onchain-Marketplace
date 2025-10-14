@@ -104,6 +104,25 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
       })).sort((a, b) => b.createdAt - a.createdAt);
       setOrders(normalized);
       setCurrentPage(1);
+
+    // Real-time event listeners
+    contract.on("ListingCreated", loadOrders);
+    contract.on("OrderRequested", loadOrders);
+    contract.on("ShippingSet", loadOrders);
+    contract.on("MarkedShipped", loadOrders);
+    contract.on("OrderConfirmedAndPaid", loadOrders);
+    contract.on("DeliveryConfirmed", loadOrders);
+    contract.on("Refunded", loadOrders);
+    contract.on("DisputeOpened", loadOrders);
+    contract.on("DisputeCancelled", loadOrders);
+    contract.on("DisputeResolved", loadOrders);
+    contract.on("OrderCanceledByBuyer", loadOrders);
+    contract.on("OrderCancelledBySeller", loadOrders);
+    contract.on("SellerRated", loadOrders);
+    contract.on("ReceiptMinted", loadOrders);
+    return () => {
+      contract.removeAllListeners();
+    };
     } catch (err) {
       console.log("loadOrders err", err);
       pushToast?.("error", "Failed to load orders");

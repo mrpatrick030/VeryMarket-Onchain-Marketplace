@@ -17,6 +17,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
 
   const [contract, setContract] = useState(null);
   const [listings, setListings] = useState([]);
+  const [sellerListings, setSellerListings] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -111,6 +112,19 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
       }));
       setListings(formatted);
       setFiltered(formatted);
+
+    // Real-time event listeners
+    contract.on("ListingCreated", loadActiveListings);
+    contract.on("StoreUpdated", loadActiveListings);
+    contract.on("ListingUpdated", loadActiveListings);
+    contract.on("ListingCanceled", loadActiveListings);
+    contract.on("ListingDeactivated", loadActiveListings);
+    contract.on("ListingReactivated", loadActiveListings);
+    contract.on("OrderRequested", loadActiveListings);
+    contract.on("TokenApproved", loadActiveListings);
+    return () => {
+      contract.removeAllListeners();
+    };
     } catch (err) {
       console.log("Error fetching listings:", err);
     }
@@ -255,7 +269,6 @@ const deactivateListing = (id) => {
         const tx = await contract.deactivateListing(id);
         await tx.wait();
         pushToast("success", "Listing deactivated");
-        await loadActiveListings();
       } catch (err) {
         console.log("deactivateListing err", err);
         pushToast("error", "Error deactivating listing");
@@ -279,7 +292,6 @@ const reactivateListing = (id) => {
         const tx = await contract.reactivateListing(id);
         await tx.wait();
         pushToast("success", "Listing reactivated");
-        await loadActiveListings();
       } catch (err) {
         console.log("reactivateListing err", err);
         pushToast("error", "Error reactivating listing");
@@ -303,7 +315,6 @@ const cancelListingIfNoSales = (id) => {
         const tx = await contract.cancelListingIfNoSales(id);
         await tx.wait();
         pushToast("success", "Listing cancelled");
-        await loadActiveListings();
       } catch (err) {
         console.log("cancelListingIfNoSales err", err);
         pushToast("error", "Error cancelling listing (maybe it has sales)");
@@ -366,7 +377,6 @@ const createOrderRequest = (id) => {
         await tx.wait();
 
         pushToast("success!" + " " + "Order request created");
-        await loadActiveListings();
       } catch (err) {
         console.log("createOrderRequest error", err);
         pushToast("error", "Error creating order request");
@@ -415,8 +425,21 @@ useEffect(() => {
         }))
       .filter((l) => l.seller.toLowerCase() === profileSeller.toLowerCase())
       .sort((a, b) => b.dateAdded - a.dateAdded);
-      setListings(formatted);
+      setSellerListings(formatted);
       setCurrentPageOfSeller(1); // Reset pagination whenever new seller opens
+
+    // Real-time event listeners
+    contract.on("ListingCreated", fetchSellerListings);
+    contract.on("StoreUpdated", fetchSellerListings);
+    contract.on("ListingUpdated", fetchSellerListings);
+    contract.on("ListingCanceled", fetchSellerListings);
+    contract.on("ListingDeactivated", fetchSellerListings);
+    contract.on("ListingReactivated", fetchSellerListings);
+    contract.on("OrderRequested", fetchSellerListings);
+    contract.on("TokenApproved", fetchSellerListings);
+    return () => {
+      contract.removeAllListeners();
+    };
     } catch (err) {
       console.log("Error fetching seller listings:", err);
     } finally {
@@ -429,8 +452,8 @@ useEffect(() => {
 // --- Pagination helpers ---
 const indexOfLastItem = currentPageOfSeller * itemsPerPage;
 const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-const paginatedItemsOfSeller = listings.slice(indexOfFirstItem, indexOfLastItem);
-const totalPagesOfSeller = Math.ceil(listings.length / itemsPerPage);
+const paginatedItemsOfSeller = sellerListings.slice(indexOfFirstItem, indexOfLastItem);
+const totalPagesOfSeller = Math.ceil(sellerListings.length / itemsPerPage);
 
 const goToNextPage = () => {
   if (currentPageOfSeller < totalPagesOfSeller) setCurrentPageOfSeller((prev) => prev + 1);
@@ -455,7 +478,7 @@ useEffect(() => {
     if (!contract || !profileSeller) return;
     setLoadingStore(true);
     try {
-      const s = await contract.getStoreByAddress(profileSeller); // <-- assuming contract exposes this
+      const s = await contract.getStoreByAddress(profileSeller);
       const formattedStore = {
         id: Number(s.id),
         owner: s.owner,
@@ -1344,7 +1367,7 @@ useEffect(() => {
 
                 {loading ? (
                   <p>Loading seller listings...</p>
-                ) : listings.length === 0 ? (
+                ) : sellerListings.length === 0 ? (
                   <p
                     className={`${
                       darkMode ? "text-gray-400" : "text-gray-500"
