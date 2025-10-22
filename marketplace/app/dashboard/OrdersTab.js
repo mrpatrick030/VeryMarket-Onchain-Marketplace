@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   useWeb3ModalProvider,
   useWeb3ModalAccount,
@@ -8,8 +8,8 @@ import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
 import InputModal from "./InputModal";
-import ChatModal from "./ChatModal"; // still available for later
-import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, CircleCheck, Package, Timer, MapPin, MessageSquareText, ThumbsUp, ThumbsDown, User, Store, AlertTriangle } from "lucide-react";
+import ChatModal from "./ChatModal";
+import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, CircleCheck, Package, Timer, MapPin, MessageSquareText, ThumbsUp, ThumbsDown, User, Store, AlertTriangle, ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, Shield, SortAsc, SortDesc, } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ViewReceiptModal from "./ViewReceiptModal";
 
@@ -22,17 +22,24 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
-  // for showing current total items
-  const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const end = Math.min(currentPage * ITEMS_PER_PAGE, orders.length);
-  const totalPages = Math.max(1, Math.ceil(orders.length / ITEMS_PER_PAGE));
-  const paginated = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return orders.slice(start, start + ITEMS_PER_PAGE);
-  }, [orders, currentPage]);
+  //orders filter and search useStates
+const [statusFilter, setStatusFilter] = useState("all");
+const [searchTerm, setSearchTerm] = useState("");
+
+const [dropdownOpen, setDropdownOpen] = useState(false);
+const dropdownRef = useRef(null);
+
+  const statusOptions = useMemo(() => {
+    // produce { value: "all" | "0" | "1"... , label }
+    const opts = [{ value: "all", label: "All statuses" }];
+    STATUS.forEach((s, idx) => {
+      if (idx === 0) return;
+      opts.push({ value: String(idx), label: s });
+    });
+    return opts;
+  }, [STATUS]);
+
+
 
   // Modals state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -41,7 +48,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
   const [inputOpen, setInputOpen] = useState(false);
   const [inputConfig, setInputConfig] = useState({ title: "", fields: [], onSubmit: () => {} });
 
-  // chat (left for wiring later)
+  // chat
   const [chatOpen, setChatOpen] = useState(false);
   const [chatWith, setChatWith] = useState(null);
 
@@ -74,10 +81,10 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
     setLoading(true);
     try {
       const raw = await contract.getOrdersForUser(address);
-      // raw is Order[]; map to friendly JS objects
+      // raw is Order[]; mapping to friendly JS objects
       const normalized = raw.map((o, idx) => ({
         id: Number(o.id),
-        buyer: o.buyer,
+        buyer: o.buyer, 
         seller: o.seller,
         listingId: Number(o.listingId),
         storeId: Number(o.storeId),
@@ -104,25 +111,6 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
       })).sort((a, b) => b.createdAt - a.createdAt);
       setOrders(normalized);
       setCurrentPage(1);
-
-    // Real-time event listeners
-    contract.on("ListingCreated", loadOrders);
-    contract.on("OrderRequested", loadOrders);
-    contract.on("ShippingSet", loadOrders);
-    contract.on("MarkedShipped", loadOrders);
-    contract.on("OrderConfirmedAndPaid", loadOrders);
-    contract.on("DeliveryConfirmed", loadOrders);
-    contract.on("Refunded", loadOrders);
-    contract.on("DisputeOpened", loadOrders);
-    contract.on("DisputeCancelled", loadOrders);
-    contract.on("DisputeResolved", loadOrders);
-    contract.on("OrderCanceledByBuyer", loadOrders);
-    contract.on("OrderCancelledBySeller", loadOrders);
-    contract.on("SellerRated", loadOrders);
-    contract.on("ReceiptMinted", loadOrders);
-    return () => {
-      contract.removeAllListeners();
-    };
     } catch (err) {
       console.log("loadOrders err", err);
       pushToast?.("error", "Failed to load orders");
@@ -131,10 +119,96 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
     }
   };
 
+  // Attach contract event listeners once when contract becomes available
   useEffect(() => {
+    if (!contract) return;
+    // handlers reload orders 
+    const refresh = () => {
+      loadOrders().catch((e) => console.log("refresh err", e));
+    };
+
+    const events = [
+      "ListingCreated",
+      "OrderRequested",
+      "ShippingSet",
+      "MarkedShipped",
+      "OrderConfirmedAndPaid",
+      "DeliveryConfirmed",
+      "Refunded",
+      "DisputeOpened",
+      "DisputeCancelled",
+      "DisputeResolved",
+      "OrderCanceledByBuyer",
+      "OrderCancelledBySeller",
+      "SellerRated",
+      "ReceiptMinted",
+    ];
+
+    events.forEach((evt) => contract.on(evt, refresh));
+
+    // initial load and return cleanup to remove listeners on unmount or contract change
     loadOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      events.forEach((evt) => {
+        try {
+          contract.removeAllListeners(evt);
+        } catch (e) {
+        }
+      });
+    };
   }, [contract, address]);
+
+  // Dropdown outside click close
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+  // Filtered orders: apply status filter first, then sort (we keep current sort as descending by date)
+  const filteredOrders = useMemo(() => {
+    let arr = [...orders];
+    if (statusFilter !== "all") {
+      const wantedStatus = Number(statusFilter); // statusFilter stores index
+      arr = arr.filter((o) => o.status === wantedStatus);
+    }
+      // Search filter
+  if (searchTerm.trim()) {
+    const term = searchTerm.toLowerCase();
+    arr = arr.filter(
+      (o) =>
+        o.id.toString().includes(term) ||
+        o.title?.toLowerCase().includes(term) ||
+        o.buyerLocation?.toLowerCase().includes(term) ||
+        o.buyer?.toLowerCase().includes(term) ||
+        o.seller?.toLowerCase().includes(term)
+    );
+  }
+    // default sort: most recent first (already sorted in loadOrders)
+    return arr;
+  }, [orders, statusFilter, searchTerm]);
+
+
+    // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+    // Pagination to be applied to filteredOrders
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE));
+  // ensuring currentPage in range
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [totalPages, currentPage]);
+
+  const paginated = useMemo(() => {
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredOrders.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
 
   // Helpers for confirm/input modals
   const askConfirm = (title, message, onConfirm) => {
@@ -174,7 +248,7 @@ export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], da
         if (!shippingFee || !etaDays) return pushToast?.("error", "All fields required");
         try {
           setLoading(true);
-          // convert shippingFee to wei (18 decimals assumption)
+          // convert shippingFee to wei (18 decimals used)
           const feeWei = parseUnits(shippingFee.toString(), 18);
           await callTx("sellerSetShipping", orderId, feeWei, Number(etaDays));
         }
@@ -379,7 +453,7 @@ const containerVariants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1, // 👈 delay between each card
+      staggerChildren: 0.1, // delay between each card
     },
   },
 };
@@ -390,7 +464,7 @@ const cardVariants = {
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3 } },
 };
 
-//useState for chat orders
+//useState for orders
 const [selectedOrder, setSelectedOrder] = useState(null);
 
 //determine user role
@@ -415,6 +489,9 @@ const closeReceiptModal = () => {
 };
 
 
+  // UI dropdown active option label
+  const activeStatusOption = statusOptions.find((s) => s.value === statusFilter) || statusOptions[0];
+
   // If not connected
   if (!walletProvider) {
     return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view orders.</div>;
@@ -428,16 +505,105 @@ const closeReceiptModal = () => {
       darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"
     }`}
   >
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xl font-bold">My Orders</h2>
-      <div className="text-sm text-gray-500">Showing {start} - {end} of {orders.length} {orders.length > 1 ? "orders" : "order"}</div>
+    <div className="flex flex-col flex-row justify-between gap-3 mb-2">
+    <div>
+      <h2 className="text-xl font-bold mb-2">📦 My Orders</h2>
+    </div>
+
+          {/* Dropdown filter and search area */}
+          <div className="flex items-center gap-3">
+                {/* Search Input */}
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
+                    darkMode
+                      ? "bg-gray-700 border-gray-600 text-gray-100"
+                      : "bg-gray-100 border-gray-300 text-gray-800"
+                  }`}
+                >
+                  <Search size={16} className="text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Search orders..."
+                    className={`bg-transparent text-sm outline-none w-40 ${
+                      darkMode ? "placeholder-gray-400" : "placeholder-gray-500"
+                    }`}
+                  />
+                </div>
+                {/* Dropdown filter area */}
+            <div ref={dropdownRef} className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDropdownOpen((s) => !s);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  darkMode
+                    ? "bg-gray-700 text-gray-100 hover:bg-gray-600 border border-gray-600"
+                    : "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300"
+                }`}
+              >
+                <span className="text-sm font-medium">{activeStatusOption.label}</span>
+                {dropdownOpen ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
+              </button>
+
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.15 }}
+                    className={`absolute right-0 mt-2 w-52 rounded-xl shadow-lg z-20 overflow-hidden border ${
+                      darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"
+                    }`}
+                  >
+                    {statusOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                           setStatusFilter(opt.value);
+                          setDropdownOpen(false);
+                          setCurrentPage(1); // reset page when changing filter
+                        }}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition-all ${
+                          statusFilter === opt.value
+                            ? darkMode
+                              ? "bg-blue-600 text-white"
+                              : "bg-blue-100 text-sky-800"
+                            : darkMode
+                            ? "hover:bg-gray-600 text-gray-100"
+                            : "hover:bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+    </div>
+
+   {/* filtered results */}
+   <div className="text-sm text-gray-500 mb-4">
+    {filteredOrders.length > 0 ?
+    (<p>
+    Showing {(( (currentPage-1)*ITEMS_PER_PAGE + 1))} - { Math.min(currentPage*ITEMS_PER_PAGE, filteredOrders.length) } of {filteredOrders.length} {filteredOrders.length > 1 ? "orders" : "order"}
+    </p>) :
+     (<p className="text-sm text-gray-500">No orders found</p>)}
     </div>
 
     {loading && (
       <div className="text-center py-6 text-gray-500 text-sm">Loading...</div>
     )}
 
-    {orders.length === 0 && !loading && (
+    {(orders.length === 0 && !loading) && (
       <div className="text-center py-10 text-gray-400 text-sm">
         You have no orders.
       </div>

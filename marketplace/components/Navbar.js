@@ -86,7 +86,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
         <div className="hidden lg:flex items-center gap-6">
           {/* Tabs */}
           <div className="flex gap-2">
-            {["orders", "listings", "create"].map((tab) => (
+            {["analytics", "orders", "listings", "create"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -153,7 +153,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
         <div className="flex flex-col gap-3">
           {/* Tabs */}
           <div className="flex flex-col gap-2">
-            {["orders", "listings", "create"].map((tab) => (
+            {["analytics", "orders", "listings", "create"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {

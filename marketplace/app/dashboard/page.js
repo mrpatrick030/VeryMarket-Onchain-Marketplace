@@ -13,6 +13,7 @@ import CreateListingTab from "./CreateListingTab";
 import DisputesTab from "./DisputesTab";
 
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
+import AnalyticsTab from "./AnalyticsTab";
 
 // Token metadata
 const TOKEN_LOGOS = {
@@ -22,7 +23,7 @@ const TOKEN_LOGOS = {
   "0x0000000000000000000000000000000000000000": { logo: "/images/eth.png", name: "ETH" },
 };
 
-// Match the contract enum
+// Matching the contract enum
 const STATUS = [
   "None",
   "Requested",
@@ -111,33 +112,6 @@ export default function Dashboard() {
     }
   }
 
-  // ----------- Act on Orders -----------
-  async function act(orderId, fn, buyerPercent) {
-    if (!walletProvider) return alert("Connect wallet first");
-    const provider = new BrowserProvider(walletProvider);
-    const signer = await provider.getSigner();
-    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
-
-    try {
-      setLoading(true);
-      let tx;
-      if (fn === "resolveDispute") {
-        const payoutToSeller = 0; // Adjust logic for buyerPercent if needed
-        tx = await contract.resolveDispute(orderId, buyerPercent, payoutToSeller);
-      } else {
-        tx = await contract[fn](orderId);
-      }
-      await tx.wait();
-      pushToast(`✅ Action '${fn}' executed for Order #${orderId}`);
-      loadOrders();
-    } catch (err) {
-      console.log(err);
-      pushToast(`❌ Action failed: ${err.message}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // ----------- Toasts -----------
   function pushToast(message, type = "info") {
     const id = Date.now();
@@ -197,10 +171,11 @@ export default function Dashboard() {
       </div>
 
       {/* Tabs */}
-      {activeTab === "orders" && <OrdersTab act={act} TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} darkMode={darkMode} />}
+      {activeTab === "analytics" && <AnalyticsTab pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
+      {activeTab === "orders" && <OrdersTab TOKEN_LOGOS={TOKEN_LOGOS} STATUS={STATUS} darkMode={darkMode} />}
       {activeTab === "listings" && <ListingsTab listings={listings} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
       {activeTab === "create" && <CreateListingTab walletProvider={walletProvider} pushToast={pushToast} TOKEN_LOGOS={TOKEN_LOGOS} darkMode={darkMode} />}
-      {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} act={act} pushToast={pushToast} darkMode={darkMode} TOKEN_LOGOS={TOKEN_LOGOS} />}
+      {activeTab === "disputes" && isAdmin && <DisputesTab orders={orders} pushToast={pushToast} darkMode={darkMode} TOKEN_LOGOS={TOKEN_LOGOS} />}
     </div>
   );
 }

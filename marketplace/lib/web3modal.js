@@ -14,6 +14,14 @@ const mainnet = {
   rpcUrl: 'https://cloudflare-eth.com'
 }
 
+const hederaTestnet = {
+  chainId: 296,
+  name: 'Hedera Testnet',
+  currency: 'HBAR',
+  explorerUrl: 'https://hashscan.io/testnet/home',
+  rpcUrl: 'https://testnet.hashio.io/api'
+}
+
 const swellTestnet = {
   chainId: 1924,
   name: 'Swell Testnet',
@@ -47,7 +55,7 @@ const ethersConfig = defaultConfig({
 // 5. Create a Web3Modal instance
 createWeb3Modal({
   ethersConfig,
-  chains: [mainnet, swellTestnet],
+  chains: [mainnet, hederaTestnet, swellTestnet],
   projectId,
   enableAnalytics: true, // Optional - defaults to your Cloud configuration
   enableOnramp: true, // Optional - false as default
@@ -57,6 +65,7 @@ createWeb3Modal({
   },
   defaultChain: mainnet,
   chainImages: {
+    296: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmThU47Qaw4DaevhNZg4v6fJqZ2FQ8XCR9LZjbaQqfe7xc',
     1924: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmSX8NnaEdZz8EBd82KoHu6xsqpFa2aZfzQVa9XBhJW5fZ'
   }
 })

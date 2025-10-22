@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
-import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, Store } from "lucide-react";
+import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, Store, ChevronUp, ChevronDown } from "lucide-react";
 
 import Link from "next/link";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
@@ -88,11 +88,12 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     { name: "Travel & Luggage", symbol: "✈️" },
     { name: "Gardening & Outdoors", symbol: "🌱" },
     { name: "Energy & Solar", symbol: "🔋" },
-  ];
+  ]; 
 
   // ---------------- FETCH ACTIVE LISTINGS ----------------
   const loadActiveListings = async () => {
     if (!contract) return;
+     setLoading(true);
     try {
       const activeListings = await contract.getActiveListings();
       const formatted = activeListings.map((l, i) => ({
@@ -128,6 +129,9 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     } catch (err) {
       console.log("Error fetching listings:", err);
     }
+    finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -135,7 +139,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
   }, [contract]);
 
     //pagination
-const ITEMS_PER_PAGE = 10; // adjust per your grid
+const ITEMS_PER_PAGE = 10; // adjust per grid
 const [currentPage, setCurrentPage] = useState(1);
 // Calculate pagination
 const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -214,7 +218,7 @@ const openEditModal = async (listingId) => {
     setEditingListingId(listingId);
 
     setForm({
-      // Only price + quantity matter for update, but we can still fetch/store other fields
+      // Only price + quantity matter for update
       price: Number(formatUnits(onChain.price, 18)).toString(),
       quantity: String(onChain.quantity),
     });
@@ -372,7 +376,7 @@ const createOrderRequest = (id) => {
 
         setLoadingAction(true);
 
-        // ✅ Only call createOrderRequest — no ETH/tokens sent here
+        // no ETH/tokens sent here
         const tx = await contract.createOrderRequest(id, quantity, location);
         await tx.wait();
 
@@ -391,7 +395,7 @@ const createOrderRequest = (id) => {
 
 
   // Fetch listings for Seller Profile
-  // --- Inside your ListingsTab component ---
+  // --- Inside ListingsTab component ---
 const [currentPageOfSeller, setCurrentPageOfSeller] = useState(1);
 const [itemsPerPage] = useState(10);
 
@@ -546,6 +550,20 @@ useEffect(() => {
   fetchMyStore();
 }, [contract, address]);
 
+//for the filter dropdown
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const options = [
+    { value: "recent", label: "Recent" },
+    { value: "earliest", label: "Earliest" },
+    { value: "a-z", label: "A - Z" },
+    { value: "z-a", label: "Z - A" },
+    { value: "token", label: "Token Name" },
+  ];
+
+  const selectedLabel = options.find((o) => o.value === sort)?.label || "Recent";
+
   if (!walletProvider) {
     return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view listings.</div>;
   }
@@ -599,13 +617,20 @@ useEffect(() => {
         ${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-900"}`}
     >
       {/* Close Button */}
+      <div className="justify-items-center">
       <button
         onClick={() => setSidebarOpen(false)}
-        className={`mb-5 flex items-center gap-2 transition-colors
-          ${darkMode ? "text-red-400 hover:text-red-200" : "text-red-600 hover:text-red-400"}`}
+        className={`my-5 flex items-center px-2 py-2 rounded-[100%] gap-2 bg-gray-300/40 transition-colors rounded-full transition-all duration-200 shadow-md
+      ${darkMode 
+        ? "bg-gray-700 text-red-400 hover:bg-gray-700 hover:text-red-200" 
+        : "bg-gray-100 text-red-600 hover:bg-gray-200 hover:text-red-500"
+      }
+      focus:outline-none focus:ring-offset-1
+      aria-label="Close sidebar"`}
       >
-        <X size={22} /> Close
+        <X size={25} />
       </button>
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -656,42 +681,82 @@ useEffect(() => {
   {/* Controls */}
   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
     {/* Search */}
-    <div className={`flex items-center border rounded px-2 py-1 w-full md:w-1/3 ${darkMode ? "border-gray-700" : "border-gray-300"}`}>
+    <div className={`flex items-center border rounded-full px-2 py-1 w-full md:w-1/3 ${darkMode ? "bg-gray-700 border-gray-700" : "bg-gray-100 border-gray-300"}`}>
       <Search size={18} className={`mr-2 ${darkMode ? "text-gray-300" : "text-gray-500"}`} />
       <input
         type="text"
-        placeholder="Search listings (title/store/category/desc/token)..."
+        placeholder="Search for listings..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className={`w-full outline-none p-1 rounded ${darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900"}`}
+        className={`w-full outline-none p-1 rounded-full ${darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900"}`}
       />
     </div>
 
     {/* Mobile Category Toggle */}
     <div className="flex items-center gap-2">
       <button
-        className={`md:hidden p-2 border rounded flex items-center gap-2 ${darkMode ? "border-gray-700 text-gray-200" : "border-gray-300 text-gray-900"}`}
+        className={`md:hidden p-2 border rounded flex items-center gap-2 ${darkMode ? "border-gray-700 hover:bg-gray-800 text-gray-200" : "border-gray-300 hover:bg-gray-200 text-gray-900"}`}
         onClick={() => setSidebarOpen(true)}
       >
         <Menu size={18} /> Categories
       </button>
 
       {/* Sort + Layout */}
-      <select
-        value={sort}
-        onChange={(e) => setSort(e.target.value)}
-        className={`border rounded px-2 py-1 ${darkMode ? "bg-gray-700 border-gray-700 text-gray-200" : "bg-white border-gray-300 text-gray-900"}`}
+     <div ref={dropdownRef} className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setDropdownOpen(!dropdownOpen);
+        }}
+        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-all ${
+          darkMode
+            ? "text-gray-100 hover:bg-gray-800 border border-gray-600"
+            : "text-gray-800 hover:bg-gray-200 border border-gray-300"
+        }`}
       >
-        <option value="recent">Recent</option>
-        <option value="earliest">Earliest</option>
-        <option value="a-z">A - Z</option>
-        <option value="z-a">Z - A</option>
-        <option value="token">Token Name</option>
-      </select>
+        {selectedLabel}
+        {dropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
 
-      <button onClick={() => setLayout("grid1")} className={`p-2 border rounded ${darkMode ? "border-gray-700 text-gray-200" : "border-gray-300 text-gray-900"}`}><List size={18} /></button>
-      <button onClick={() => setLayout("grid2")} className={`p-2 border rounded ${darkMode ? "border-gray-700 text-gray-200" : "border-gray-300 text-gray-900"}`}><Grid size={18} /></button>
-      <button onClick={() => setLayout("grid3")} className={`p-2 border rounded ${darkMode ? "border-gray-700 text-gray-200" : "border-gray-300 text-gray-900"}`}><LayoutGrid size={18} /></button>
+      <AnimatePresence>
+        {dropdownOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-20 overflow-hidden border ${
+              darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"
+            }`}
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => {
+                  setSort(opt.value);
+                  setDropdownOpen(false);
+                }}
+                className={`w-full px-4 py-2 text-sm text-left transition-all ${
+                  sort === opt.value
+                    ? darkMode
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-100 text-blue-800"
+                    : darkMode
+                    ? "hover:bg-gray-700 text-gray-100"
+                    : "hover:bg-gray-100 text-gray-800"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+
+      <button onClick={() => setLayout("grid1")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><List size={18} /></button>
+      <button onClick={() => setLayout("grid2")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><Grid size={18} /></button>
+      <button onClick={() => setLayout("grid3")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><LayoutGrid size={18} /></button>
     </div>
   </div>
 
@@ -701,7 +766,7 @@ useEffect(() => {
     <button
       onClick={() => setProfileSeller(address)}
       className={`flex items-center gap-2 px-4 py-2 rounded-full shadow transition
-        ${darkMode ? "bg-indigo-700 hover:bg-indigo-600 text-white" : "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"}`}
+        ${darkMode ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-blue-100 hover:bg-blue-50 text-blue-700"}`}
     >
       <UserCircle size={18} /> View your Listings
     </button>
@@ -712,11 +777,14 @@ useEffect(() => {
 
 {/* Product Grid */}
 {!profileSeller && (
-  <motion.div
+  <div
     layout
     className={`grid ${gridClass} gap-6`}
   >
-    {filtered.length === 0 && (
+    {loading && (
+     <div className="text-center py-6 text-gray-500 text-sm">Loading...</div>
+    )}
+    {(filtered.length === 0 && !loading) && (
     <p className="text-gray-500 text-center mt-6">No listings found.</p>)}
     {paginatedItems.map((l, idx) => (
       <motion.div
@@ -725,7 +793,7 @@ useEffect(() => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 * idx, duration: 0.3, ease: "easeInOut" }}
         className={`border rounded-xl shadow-md overflow-hidden flex flex-col transition hover:shadow-lg cursor-pointer
-          ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-200 text-gray-900"}`}
+        ${darkMode ? "bg-gray-800 border-gray-700 text-gray-200" : "bg-white border-gray-200 text-gray-900"}`}
         onClick={() => setSelected(l)}
       >
         {/* Image */}
@@ -875,7 +943,7 @@ useEffect(() => {
         </div>
       </motion.div>
     ))}
-  </motion.div>
+  </div>
 )}
 
 {/* Pagination */}

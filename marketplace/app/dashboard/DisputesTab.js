@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   useWeb3ModalProvider,
   useWeb3ModalAccount,
@@ -19,7 +19,11 @@ import {
   User,
   Store,
   AlertTriangle,
-  CircleCheck,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  CheckCircle,
+  Search,
   X,
   ChevronLeft,
   ChevronRight,
@@ -40,20 +44,51 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  //Input modal for resolving dispute
+  // Dropdown and search states
+const [dropdownOpen, setDropdownOpen] = useState(false);
+const [selectedStatus, setSelectedStatus] = useState("All");
+const [searchTerm, setSearchTerm] = useState("");
+const dropdownRef = useRef(null);
+
+// Filter logic
+const filteredDisputes = useMemo(() => {
+  let data = disputes;
+
+  // Status filter
+  if (selectedStatus === "Disputed") data = data.filter((o) => o.status === 5);
+  if (selectedStatus === "Dispute Resolved") data = data.filter((o) => o.status === 9);
+
+  // Search filter
+  if (searchTerm.trim()) {
+    const term = searchTerm.toLowerCase();
+    data = data.filter(
+      (o) =>
+        o.id.toString().includes(term) ||
+        o.title?.toLowerCase().includes(term) ||
+        o.buyerLocation?.toLowerCase().includes(term) ||
+        o.buyer?.toLowerCase().includes(term) ||
+        o.seller?.toLowerCase().includes(term)
+    );
+  }
+
+  return data;
+}, [disputes, selectedStatus, searchTerm]);
+
+// Pagination (filteredDisputes)
+const [currentPage, setCurrentPage] = useState(1);
+const ITEMS_PER_PAGE = 10;
+const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+const end = Math.min(currentPage * ITEMS_PER_PAGE, filteredDisputes.length);
+const totalPages = Math.max(1, Math.ceil(filteredDisputes.length / ITEMS_PER_PAGE));
+const paginated = useMemo(() => {
+  const s = (currentPage - 1) * ITEMS_PER_PAGE;
+  return filteredDisputes.slice(s, s + ITEMS_PER_PAGE);
+}, [filteredDisputes, currentPage]);
+
+
+    //Input modal for resolving dispute
   const [inputOpen, setInputOpen] = useState(false);
   const [inputConfig, setInputConfig] = useState({ title: "", fields: [], onSubmit: () => {} });
-
-  // pagination (matching Orders tab)
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
-  const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const end = Math.min(currentPage * ITEMS_PER_PAGE, disputes.length);
-  const totalPages = Math.max(1, Math.ceil(disputes.length / ITEMS_PER_PAGE));
-  const paginated = useMemo(() => {
-    const s = (currentPage - 1) * ITEMS_PER_PAGE;
-    return disputes.slice(s, s + ITEMS_PER_PAGE);
-  }, [disputes, currentPage]);
 
   // modals & chat
   const [resolveOpen, setResolveOpen] = useState(false);
@@ -215,11 +250,11 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
       try {
         setLoading(true);
 
-        // Step 1️⃣ — Prepare on-chain values
+        // Step 1 — Prepare on-chain values
         const refundWei = parseUnits(values.refundAmount.toString() || "0", 18);
         const payoutWei = parseUnits(values.sellerPayout.toString() || "0", 18);
 
-        // Step 2️⃣ — Build NFT metadata for the receipt
+        // Step 2 — Build NFT metadata for the receipt
         const metadata = {
           name: `Order #${order.id} Dispute Resolution`,
           description: `Resolution record for order #${order.id}.`,
@@ -246,7 +281,7 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
         const { tokenURI } = await uploadRes.json();
         if (!tokenURI) throw new Error("Failed to upload metadata");
 
-        // Step 4️⃣ — Call contract with tokenURI
+        // Step 3 — Call contract with tokenURI
         const tx = await contract.resolveDispute(order.id, refundWei, payoutWei, tokenURI);
         await tx.wait();
 
@@ -292,12 +327,118 @@ export default function DisputesTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], 
 
   return (
     <div className={`space-y-6 p-5 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Disputes</h2>
-        <div className="text-sm text-gray-500">
-          Showing {start} - {end} of {disputes.length} {disputes.length > 1 ? "disputes" : "dispute"}
-        </div>
-      </div>
+{/* Header */}
+<div className="flex flex-wrap items-center justify-between mb-2 gap-3">
+  {/* Left side: title */}
+  <h2 className="text-xl font-bold">⚖️ Disputes</h2>
+
+  {/* Right side: controls */}
+  <div className="flex items-center gap-3">
+    {/* Search Input */}
+    <div
+      className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
+        darkMode
+          ? "bg-gray-700 border-gray-600 text-gray-100"
+          : "bg-gray-100 border-gray-300 text-gray-800"
+      }`}
+    >
+      <Search size={16} className="text-gray-400" />
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          setCurrentPage(1);
+        }}
+        placeholder="Search dispute..."
+        className={`bg-transparent text-sm outline-none w-40 ${
+          darkMode ? "placeholder-gray-400" : "placeholder-gray-500"
+        }`}
+      />
+    </div>
+
+    {/* Custom Dropdown */}
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setDropdownOpen(!dropdownOpen);
+        }}
+        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          darkMode
+            ? "bg-gray-700 text-gray-100 hover:bg-gray-600 border border-gray-600"
+            : "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300"
+        }`}
+      >
+        {selectedStatus === "Disputed" && (
+          <AlertCircle size={16} className="text-red-500" />
+        )}
+        {selectedStatus === "Dispute Resolved" && (
+          <CheckCircle size={16} className="text-blue-500" />
+        )}
+        {selectedStatus}
+        {dropdownOpen ? (
+          <ChevronUp size={16} className="ml-1" />
+        ) : (
+          <ChevronDown size={16} className="ml-1" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {dropdownOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg z-20 overflow-hidden border ${
+              darkMode
+                ? "bg-gray-700 border-gray-600"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            {["All", "Disputed", "Dispute Resolved"].map((opt) => (
+              <button
+                key={opt}
+                onClick={() => {
+                  setSelectedStatus(opt);
+                  setDropdownOpen(false);
+                  setCurrentPage(1);
+                }}
+                className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition-all ${
+                  selectedStatus === opt
+                    ? darkMode
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-100 text-blue-800"
+                    : darkMode
+                    ? "hover:bg-gray-600 text-gray-100"
+                    : "hover:bg-gray-100 text-gray-800"
+                }`}
+              >
+                {opt === "All" && "🌐 "}
+                {opt === "Disputed" && <AlertCircle size={15} />}
+                {opt === "Dispute Resolved" && <CheckCircle size={15} />}
+                {opt}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  </div>
+</div>
+
+{/* Results div */}
+<div className="text-sm text-gray-500 mb-4">
+{filteredDisputes.length > 0 ? (
+  <p className="text-sm text-gray-500 mb-2">
+    Showing {start} - {Math.min(end, filteredDisputes.length)} of {filteredDisputes.length}{" "}
+    {filteredDisputes.length !== 1 ? "disputes" : "dispute"}
+  </p>
+) : (
+  <p className="text-sm text-gray-500 mb-2">No disputes found</p>
+)}
+</div>
 
       {loading && <div className="text-center text-sm text-gray-500 py-4">Loading...</div>}
 

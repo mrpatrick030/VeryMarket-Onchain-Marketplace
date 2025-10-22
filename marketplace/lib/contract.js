@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-// Paste your deployed address & ABI from Remix after deployment
+// Deployed contracts addresses & ABIs
 export const MARKETPLACE_ADDRESS = "0x0a7e3660A00A28651821C048351aabcdDbf0a1B1";
 export const MARKETPLACE_ABI = [
   {
@@ -3934,7 +3934,7 @@ const NFT_ABI = [
   },
 ];
 /** 
- * Get a connected ethers.js contract instance
+ * Connected ethers.js contract instance
  * @param {ethers.Signer | ethers.Provider} signerOrProvider
  * @returns {ethers.Contract}
  */

@@ -29,7 +29,7 @@ export async function POST(req) {
       ContentType: file.type,
     };
 
-    // Wrap in Promise so we can capture headers
+    // Wrap in Promise to capture headers
     const cidUrl = await new Promise((resolve, reject) => {
       const request = s3.putObject(params);
 
