@@ -19,7 +19,7 @@ export async function PATCH(req) {
 
     return NextResponse.json(result.rows[0]);
   } catch (err) {
-    console.error("Error updating mediator join:", err);
+    console.log("Error updating mediator join:", err);
     return NextResponse.json({ error: "Failed to update mediator" }, { status: 500 });
   }
 }

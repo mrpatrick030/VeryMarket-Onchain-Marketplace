@@ -16,7 +16,7 @@
 
   //     pushToast("✅ ETH approved successfully!");
   //   } catch (err) {
-  //     console.error(err);
+  //     console.log(err);
   //     pushToast("❌ Failed to approve ETH", "error");
   //   } finally {
   //     setLoading(false);

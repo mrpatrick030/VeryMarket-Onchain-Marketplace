@@ -17,7 +17,7 @@ export async function GET(req) {
     `;
     return NextResponse.json(messages.rows || []);
   } catch (err) {
-    console.error("Error fetching messages:", err);
+    console.log("Error fetching messages:", err);
     return NextResponse.json(
       { error: "Failed to fetch messages" },
       { status: 500 }
@@ -71,7 +71,7 @@ export async function POST(req) {
 
     return NextResponse.json(result.rows[0]);
   } catch (err) {
-    console.error("Error sending message:", err);
+    console.log("Error sending message:", err);
     return NextResponse.json(
       { error: "Failed to send message" },
       { status: 500 }

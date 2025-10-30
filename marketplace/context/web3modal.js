@@ -3,7 +3,7 @@
 import { createWeb3Modal, defaultConfig } from '@web3modal/ethers/react'
 
 // 1. Get projectId at https://cloud.walletconnect.com
-const projectId = '4ae4f912d4e7629aeeccff8fb3804be4'
+const projectId = 'c7a73a60060fab01303446d395de2614'
 
 // 2. Set chains
 const mainnet = {
@@ -22,20 +22,12 @@ const hederaTestnet = {
   rpcUrl: 'https://testnet.hashio.io/api'
 }
 
-const swellTestnet = {
-  chainId: 1924,
-  name: 'Swell Testnet',
-  currency: 'ETH',
-  explorerUrl: 'https://swell-testnet-explorer.alt.technology',
-  rpcUrl: 'https://rpc.ankr.com/swell_sepolia'
-}
-
 // 3. Create a metadata object
 const metadata = {
-  name: 'Very Market',
+  name: 'VeryMarket',
   description: 'Decentralized Marketplace',
-  url: 'localhost:3000', // origin must match domain & subdomain
-  icons: ['https://supposed-emerald-snake.myfilebase.com/ipfs/QmWDKfLRmyCiEU88K1s1yYxSp4z1DPGcCfVp2hW67wKMsg']
+  url: 'https://localhost:3000', // origin must match domain & subdomain
+  icons: ['https://supposed-emerald-snake.myfilebase.com/ipfs/QmeQZU2iPQXAZA1hVoEd1oniznrYmakxAL4Mc8guZmWCQC']
 }
 
 // 4. Create Ethers config
@@ -55,7 +47,7 @@ const ethersConfig = defaultConfig({
 // 5. Create a Web3Modal instance
 createWeb3Modal({
   ethersConfig,
-  chains: [mainnet, hederaTestnet, swellTestnet],
+  chains: [mainnet, hederaTestnet],
   projectId,
   enableAnalytics: true, // Optional - defaults to your Cloud configuration
   enableOnramp: true, // Optional - false as default
@@ -65,17 +57,12 @@ createWeb3Modal({
   },
   defaultChain: mainnet,
   chainImages: {
-    296: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmThU47Qaw4DaevhNZg4v6fJqZ2FQ8XCR9LZjbaQqfe7xc',
-    1924: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmSX8NnaEdZz8EBd82KoHu6xsqpFa2aZfzQVa9XBhJW5fZ'
+    296: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmThU47Qaw4DaevhNZg4v6fJqZ2FQ8XCR9LZjbaQqfe7xc'
   }
 })
 
 export function Web3Modal({ children }) {
   return children
-}
-
-export function prettyTx(hash) {
-  return `${swellTestnet.explorerUrl}/tx/${hash}`;
 }
 
 

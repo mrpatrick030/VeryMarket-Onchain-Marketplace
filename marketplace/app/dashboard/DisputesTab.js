@@ -139,15 +139,18 @@ const paginated = useMemo(() => {
           console.log("mediator not present/readable:", err?.message || err);
         }
       } catch (err) {
-        console.error("contract init: ", err);
+        console.log("contract init: ", err);
       }
     })();
   }, [walletProvider]);
 
   // load disputes from contract
+  const [refresh, setRefresh] = useState(false)
   const loadDisputes = async () => {
     if (!contract) return;
-    setLoading(true);
+    if (refresh === false) {
+       setLoading(true)
+     }
     try {
       const raw = await contract.getAllDisputes();
       // normalize like orders
@@ -180,18 +183,9 @@ const paginated = useMemo(() => {
       })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setDisputes(normalized);
       setCurrentPage(1);
-
-    // Real-time event listeners
-    contract.on("DisputeOpened", loadDisputes);
-    contract.on("DisputeCancelled", loadDisputes);
-    contract.on("DisputeResolved", loadDisputes);
-    contract.on("ReceiptMinted", loadDisputes);
-    return () => {
-      contract.removeAllListeners();
-    };
     } catch (err) {
       console.log("loadDisputes err", err);
-      pushToast?.("error", "Failed to load disputes");
+      pushToast?.("error", "Failed to load disputes"); 
     } finally {
       setLoading(false);
     }
@@ -199,6 +193,12 @@ const paginated = useMemo(() => {
 
   useEffect(() => {
     if (contract) loadDisputes();
+    setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      loadDisputes();
+    }, 900000)
+    return () => clearInterval(interval);
   }, [contract]);
 
   // helpers: confirm modal
@@ -272,6 +272,19 @@ const paginated = useMemo(() => {
           ],
         };
 
+        // Step 2: Send metadata to Hedera File Service (HFS) API - This is the HFS version of the metadata upload
+        // const uploadRes = await fetch("/api/uploadHFSMetadata", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(metadata),
+        // });
+
+        // const { success, tokenURI } = await uploadRes.json();
+        // if (!success || !tokenURI) {
+        //   return console.log("Failed to upload metadata to HFS");
+        // }
+
+        // Step 2: Send metadata to Filebase (IPFS) API
         const uploadRes = await fetch("/api/UploadNFTmetadata", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -287,7 +300,7 @@ const paginated = useMemo(() => {
 
         pushToast?.("success", "✅ Dispute resolved and receipt NFT minted!");
       } catch (err) {
-        console.error("resolveDispute error:", err);
+        console.log("resolveDispute error:", err);
         pushToast?.("error", err?.message || "Failed to resolve dispute");
       } finally {
         setLoading(false);
@@ -321,7 +334,7 @@ const paginated = useMemo(() => {
   };
 
   // If wallet not connected
-  if (!walletProvider) {
+  if (!address) {
     return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view disputes.</div>;
   }
 
@@ -520,7 +533,7 @@ const paginated = useMemo(() => {
                     <p className="flex items-center gap-1"><Store size={14} /> <span className="font-medium">Store ID:</span> <span className={`px-2 py-0.5 rounded font-mono ${darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-800"}`}>🏬 {String(o.storeId ?? 0).padStart(3,"0")}</span></p>
                   </div>
                 </div>
-
+ 
                 {/* price & actions */}
                 <div>
                   <div className="flex justify-end items-center gap-2 mt-4">

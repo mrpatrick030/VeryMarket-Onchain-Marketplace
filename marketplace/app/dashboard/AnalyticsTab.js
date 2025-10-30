@@ -85,9 +85,12 @@ export default function AnalyticsTab({ darkMode = false, TOKEN_LOGOS = {} }) {
   // NEW: Toggle for AI Insights
   const [showInsights, setShowInsights] = useState(false);
 
+  const [refresh, setRefresh] = useState(false)
     async function loadAll() {
+          if (refresh === false) {
+          setLoading(true)
+        }
       try {
-        setLoading(true);
         setErrors(null);
 
         let provider;
@@ -218,17 +221,6 @@ else {
     const sc = await contract.storeCount();
     setStoreCount(BigInt(sc));
 }
-
-    // Real-time event listeners
-    contract.on("ListingCreated", loadAll);
-    contract.on("OrderRequested", loadAll);
-    contract.on("ShippingSet", loadAll);
-    contract.on("DeliveryConfirmed", loadAll);
-    contract.on("DisputeOpened", loadAll);
-    contract.on("DisputeResolved", loadAll);
-    return () => {
-      contract.removeAllListeners();
-    };
       } catch (err) {
         setErrors(err?.message);
       } finally {
@@ -238,6 +230,12 @@ else {
 
     useEffect(() => {
     loadAll();
+    setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      loadAll();
+    }, 900000)
+    return () => clearInterval(interval);
   }, [walletProvider, viewMode]);
 
   useEffect(() => {
@@ -255,6 +253,13 @@ else {
     debounceTimer.current = setTimeout(() => { debounceTimer.current = null; }, 250);
     return () => debounceTimer.current && clearTimeout(debounceTimer.current);
   }, [startDate, endDate]);
+
+  const [insightsData, setInsightsData] = useState({
+  salesByDayToken: {},
+  statusCounts: {},
+  categoryCounts: {},
+  revenueByCategoryToken: {},
+});
 
   const charts = useMemo(() => {
     const flatOrders = [];
@@ -302,7 +307,7 @@ else {
     }
 
     const allDates = [...new Set(Object.values(salesByDayToken).flatMap(x => Object.keys(x)))].sort();
-    const tokenColors = { USDC: "#2775CA", USDT: "#26A17B", DAI: "#F4B731", ETH: "#6C6C6C" };
+    const tokenColors = { USDC: "#2775CA", USDT: "#26A17B", DAI: "#F4B731", HBAR: "#6C6C6C" };
 
     const lineData = {
       labels: allDates.length ? allDates : ["No data"],
@@ -399,6 +404,8 @@ const pieData = {
   })),
 };
 
+   setInsightsData({ salesByDayToken, statusCounts, categoryCounts, revenueByCategoryToken });
+
     return { lineData, barData, doughnutData, pieData };
   }, [allListingsData, ordersByListing, startDate, endDate, darkMode]);
 
@@ -408,7 +415,7 @@ const pieData = {
   const cardBg = darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-800";
   const accent = "from-blue-500 to-sky-600";
 
-  if (!walletProvider) return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view analytics.</div>;
+  if (!userAddress) return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view analytics.</div>;
 
   return (
     <div className={`p-6 space-y-6 min-h-screen transition-colors duration-300 ${containerBg}`}>
@@ -577,7 +584,7 @@ const pieData = {
 {/* Sales by Token */}
 <div className="mt-6">
   <h2 className="text-lg font-semibold mb-4">Sales by Token</h2>
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+  <div className="grid md:grid-cols-3 grid-cols-2 gap-4">
     {Object.keys(TOKEN_LOGOS).map((tokenAddr) => {
       let total = 0;
       for (const L of listings) {
@@ -672,14 +679,18 @@ const pieData = {
               transition={{ duration: 0.4 }}
               className="overflow-hidden mt-4"
             >
-              <AnalyticsInsights
-                metrics={metrics || {}}
-                prevMetrics={{ totalOrders: 0, completedOrders: 0 }}
-                storeCount={storeCount || 0}
-                salesByToken={{}}
-                salesByCategory={{}}
-                darkMode={darkMode}
-              />
+
+           <AnalyticsInsights
+            metrics={metrics || {}}
+            storeCount={storeCount || 0}
+            salesByDayToken={insightsData.salesByDayToken}
+            statusCounts={insightsData.statusCounts}
+            categoryCounts={insightsData.categoryCounts}
+            revenueByCategoryToken={insightsData.revenueByCategoryToken}
+            TOKEN_LOGOS={TOKEN_LOGOS}
+            viewMode={viewMode}
+            darkMode={darkMode}
+          />
             </motion.div>
           )}
         </AnimatePresence>
@@ -690,4 +701,4 @@ const pieData = {
         </>
     </div>
   );
-}
+} 

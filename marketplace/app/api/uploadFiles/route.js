@@ -47,7 +47,7 @@ export async function POST(req) {
     console.log(cidUrl)
     return NextResponse.json({ cid: cidUrl });
   } catch (err) {
-    console.error("Upload error:", err);
+    console.log("Upload error:", err);
     return NextResponse.json({ error: "Upload failed", details: err.message }, { status: 500 });
   }
 }

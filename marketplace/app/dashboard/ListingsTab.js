@@ -90,10 +90,12 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
     { name: "Energy & Solar", symbol: "🔋" },
   ]; 
 
-  // ---------------- FETCH ACTIVE LISTINGS ----------------
+  const [refresh, setRefresh] = useState(false)
   const loadActiveListings = async () => {
     if (!contract) return;
-     setLoading(true);
+     if (refresh === false) {
+          setLoading(true)
+        }
     try {
       const activeListings = await contract.getActiveListings();
       const formatted = activeListings.map((l, i) => ({
@@ -113,19 +115,6 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
       }));
       setListings(formatted);
       setFiltered(formatted);
-
-    // Real-time event listeners
-    contract.on("ListingCreated", loadActiveListings);
-    contract.on("StoreUpdated", loadActiveListings);
-    contract.on("ListingUpdated", loadActiveListings);
-    contract.on("ListingCanceled", loadActiveListings);
-    contract.on("ListingDeactivated", loadActiveListings);
-    contract.on("ListingReactivated", loadActiveListings);
-    contract.on("OrderRequested", loadActiveListings);
-    contract.on("TokenApproved", loadActiveListings);
-    return () => {
-      contract.removeAllListeners();
-    };
     } catch (err) {
       console.log("Error fetching listings:", err);
     }
@@ -133,10 +122,18 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
       setLoading(false);
     }
   };
-
+ 
   useEffect(() => {
+    if (!contract) return;
     loadActiveListings();
-  }, [contract]);
+
+        setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      loadActiveListings();
+    }, 900000)
+    return () => clearInterval(interval);
+  }, [contract, address]);
 
     //pagination
 const ITEMS_PER_PAGE = 10; // adjust per grid
@@ -210,7 +207,7 @@ const paginatedItems = filtered.slice(
   const [editingListingId, setEditingListingId] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
 
-const openEditModal = async (listingId) => {
+const openEditModal = async (listingId, listing) => {
   if (!contract) return pushToast("Connect wallet first");
   try {
     const onChain = await contract.getListing(listingId);
@@ -376,7 +373,7 @@ const createOrderRequest = (id) => {
 
         setLoadingAction(true);
 
-        // no ETH/tokens sent here
+        // no HBAR/stable coins sent here
         const tx = await contract.createOrderRequest(id, quantity, location);
         await tx.wait();
 
@@ -399,11 +396,12 @@ const createOrderRequest = (id) => {
 const [currentPageOfSeller, setCurrentPageOfSeller] = useState(1);
 const [itemsPerPage] = useState(10);
 
-// --- Fetch seller listings ---
-useEffect(() => {
+  // --- Fetch seller listings ---
   const fetchSellerListings = async () => {
     if (!contract || !profileSeller) return;
-    setLoading(true);
+      if (refresh === false) {
+          setLoading(true)
+        }
     try {
       let allListings;
       if (profileSeller.toLowerCase() === address.toLowerCase()){
@@ -431,27 +429,23 @@ useEffect(() => {
       .sort((a, b) => b.dateAdded - a.dateAdded);
       setSellerListings(formatted);
       setCurrentPageOfSeller(1); // Reset pagination whenever new seller opens
-
-    // Real-time event listeners
-    contract.on("ListingCreated", fetchSellerListings);
-    contract.on("StoreUpdated", fetchSellerListings);
-    contract.on("ListingUpdated", fetchSellerListings);
-    contract.on("ListingCanceled", fetchSellerListings);
-    contract.on("ListingDeactivated", fetchSellerListings);
-    contract.on("ListingReactivated", fetchSellerListings);
-    contract.on("OrderRequested", fetchSellerListings);
-    contract.on("TokenApproved", fetchSellerListings);
-    return () => {
-      contract.removeAllListeners();
-    };
     } catch (err) {
       console.log("Error fetching seller listings:", err);
     } finally {
       setLoading(false);
     }
   };
-  fetchSellerListings();
-}, [contract, profileSeller]);
+
+  useEffect(() => {
+    if (contract) fetchSellerListings();
+
+        setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      fetchSellerListings();
+    }, 900000)
+    return () => clearInterval(interval);
+  }, [contract, profileSeller]);
 
 // --- Pagination helpers ---
 const indexOfLastItem = currentPageOfSeller * itemsPerPage;
@@ -480,7 +474,9 @@ const [loadingStore, setLoadingStore] = useState(false);
 useEffect(() => {
   const fetchStore = async () => {
     if (!contract || !profileSeller) return;
-    setLoadingStore(true);
+      if (refresh === false) {
+          setLoadingStore(true)
+        }
     try {
       const s = await contract.getStoreByAddress(profileSeller);
       const formattedStore = {
@@ -505,6 +501,13 @@ useEffect(() => {
   };
 
   fetchStore();
+
+        setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      fetchStore();
+    }, 900000)
+    return () => clearInterval(interval);
 }, [contract, profileSeller]);
 
 
@@ -523,7 +526,9 @@ useEffect(() => {
   useEffect(() => {
   const fetchMyStore = async () => {
     if (!contract || !address) return;
-    setLoadingMyStore(true);
+      if (refresh === false) {
+          setLoadingMyStore(true)
+        }
     try {
       const s = await contract.getStoreByAddress(address);
       const formattedStore = {
@@ -548,6 +553,13 @@ useEffect(() => {
   };
 
   fetchMyStore();
+
+   setRefresh(true)
+    // update every 90s
+    const interval = setInterval(() => {
+      fetchMyStore();
+    }, 900000)
+    return () => clearInterval(interval);
 }, [contract, address]);
 
 //for the filter dropdown
@@ -564,7 +576,7 @@ useEffect(() => {
 
   const selectedLabel = options.find((o) => o.value === sort)?.label || "Recent";
 
-  if (!walletProvider) {
+  if (!address) {
     return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view listings.</div>;
   }
 
@@ -778,7 +790,6 @@ useEffect(() => {
 {/* Product Grid */}
 {!profileSeller && (
   <div
-    layout
     className={`grid ${gridClass} gap-6`}
   >
     {loading && (
@@ -889,7 +900,7 @@ useEffect(() => {
       {/* Edit if active */}
       {l.active && (
         <button
-          onClick={(e) => { e.stopPropagation(); openEditModal(l.id); }}
+          onClick={(e) => { e.stopPropagation(); openEditModal(l.id, l); }}
           className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs"
         >
           Edit
@@ -1445,7 +1456,6 @@ useEffect(() => {
                   </p>
                 ) : (
                   <motion.div
-                    layout
                     className={`grid ${gridClass} gap-6`}
                   >
                     <AnimatePresence initial={false}>

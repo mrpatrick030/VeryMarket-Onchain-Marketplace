@@ -218,8 +218,6 @@ const handleCategoryKeyDown = (e) => {
 
   // Create listing
   const createListing = async () => {
-    if (!walletProvider) return pushToast("⚠️ Connect wallet first", "warning");
-
     const qty = Number(quantity);
     if (!qty || qty <= 0) return pushToast("⚠️ Quantity must be at least 1", "warning");
     if (!price || Number(price) <= 0) return pushToast("⚠️ Enter a valid price", "warning");
@@ -443,7 +441,7 @@ const handleTokenKeyDown = (e) => {
           <span>{cat.symbol}</span>
           <span>{cat.name}</span>
         </div>
-      ))}
+      ))} 
     </div>
   )}
 </div>
@@ -486,7 +484,7 @@ const handleTokenKeyDown = (e) => {
     <span className="flex items-center gap-2">
       <img src={TOKEN_LOGOS[token].logo} alt="" className="w-5 h-5" />
       {TOKEN_LOGOS[token].name}{" "}
-      {token === "0x0000000000000000000000000000000000000000" && "(Native ETH)"}
+      {token === "0x0000000000000000000000000000000000000000" && "(Native HBAR)"}
     </span>
     <span className="text-gray-400">▼</span>
   </div>
@@ -524,7 +522,7 @@ const handleTokenKeyDown = (e) => {
           <span>{info.name}</span>
           <span className="text-xs text-gray-400 ml-2">
             {addr === "0x0000000000000000000000000000000000000000"
-              ? "(Native ETH)"
+              ? "(Native HBAR)"
               : addr}
           </span>
         </div>
@@ -540,13 +538,6 @@ const handleTokenKeyDown = (e) => {
         </div>
       )}
 
-      {/* <button
-        onClick={approveEth}
-        disabled={ loading}
-        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-      >
-        {loading ? "Approving..." : "Approve ETH"}
-      </button> */}
     </div>
   );
 }

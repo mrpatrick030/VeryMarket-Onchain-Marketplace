@@ -13,7 +13,7 @@ export default function BuyerConfirmPayModal({
 }) {
   if (!isOpen) return null;
 
-  const isEth = paymentToken === "0x0000000000000000000000000000000000000000";
+  const isHBAR = paymentToken === "0x0000000000000000000000000000000000000000";
 
   return (
     <AnimatePresence>
@@ -53,11 +53,11 @@ export default function BuyerConfirmPayModal({
               </p>
               <p>
                 <span className="font-medium">Payment Method:</span>{" "}
-                {isEth ? "ETH" : "ERC20 Token"}
+                {isHBAR ? "HBAR" : "ERC20 Token"}
               </p>
               <p>
                 <span className="font-medium">Total:</span>{" "}
-                {ethers.formatEther(total)} {isEth ? "ETH" : "Tokens"}
+                {ethers.formatEther(total)} {isHBAR ? "HBAR" : "Tokens"}
               </p>
               <p className="text-yellow-600 dark:text-yellow-400 text-xs">
                 Once you confirm, funds will be escrowed until delivery is completed.

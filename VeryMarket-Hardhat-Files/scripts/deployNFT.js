@@ -5,7 +5,7 @@ async function main() {
   console.log("Deploying ReceiptNFT with owner:", deployer.address);
 
   const ReceiptNFT = await hre.ethers.getContractFactory("ReceiptNFT");
-  const receiptNFT = await ReceiptNFT.deploy("0x0a7e3660A00A28651821C048351aabcdDbf0a1B1", deployer.address);
+  const receiptNFT = await ReceiptNFT.deploy("0xF410e3a0abC755e86f098241e9E18EdB66eE6CB5", deployer.address);
   await receiptNFT.waitForDeployment();
   const address = await receiptNFT.getAddress();
 
@@ -13,10 +13,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.log(error);
   process.exitCode = 1;
 });
 
 
 // deployment code
-// npx hardhat run scripts/deployNFT.js --network swellTestnet
+// npx hardhat run scripts/deployNFT.js --network hederaTestnet

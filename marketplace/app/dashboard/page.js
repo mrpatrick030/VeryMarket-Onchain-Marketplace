@@ -17,12 +17,12 @@ import AnalyticsTab from "./AnalyticsTab";
 
 // Token metadata
 const TOKEN_LOGOS = {
-  "0xA85C486c0e57267c954064Fd500077BDEdFa6704": { logo: "/images/usdc.png", name: "USDC" },
-  "0x4d54Ac4Df9304E305338fF35272367aD21c0a7dE": { logo: "/images/tether.png", name: "USDT" },
-  "0xCbE7063E2B5B5B4f574A9748354B6B076516a536": { logo: "/images/dai.png", name: "DAI" },
-  "0x0000000000000000000000000000000000000000": { logo: "/images/eth.png", name: "ETH" },
+  "0x0a7e3660A00A28651821C048351aabcdDbf0a1B1": { logo: "/images/usdc.png", name: "USDC" },
+  "0xAB64c8c61A489C0f598A35a253E70875083Ea602": { logo: "/images/tether.png", name: "USDT" },
+  "0x11e07C5C1FD74731e4567cF40FF59eE169F5301c": { logo: "/images/dai.png", name: "DAI" },
+  // "0x0000000000000000000000000000000000000000": { logo: "/images/hbar.png", name: "HBAR" },
 };
-
+ 
 // Matching the contract enum
 const STATUS = [
   "None",
@@ -157,6 +157,7 @@ export default function Dashboard() {
         isAdmin={isAdmin}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        TOKEN_LOGOS={TOKEN_LOGOS}
       />
 
       {/* Toast notifications */}

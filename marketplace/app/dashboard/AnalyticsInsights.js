@@ -7,7 +7,7 @@ import {
   Bot,
   ChevronDown,
   ChevronUp,
-  LineChart,
+  LineChart, 
   Coins,
   ShoppingBag,
 } from "lucide-react";
@@ -15,10 +15,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function AnalyticsInsights({
   metrics,
-  prevMetrics,
   storeCount,
-  salesByToken,
-  salesByCategory,
+  salesByDayToken,
+  statusCounts,
+  categoryCounts,
+  revenueByCategoryToken,
+  TOKEN_LOGOS,
+  viewMode,
   darkMode = false,
 }) {
   const [insightType, setInsightType] = useState("overall");
@@ -48,46 +51,37 @@ export default function AnalyticsInsights({
     return obj;
   };
 
-  // Generate insights on button click
   const generateInsights = async () => {
-    if (!metrics || !salesByToken) return;
-
     if (controllerRef.current) controllerRef.current.abort();
     controllerRef.current = new AbortController();
-
     setLoading(true);
     setAiResponse([]);
 
     try {
+      // Prepare payload
+      const payload = {
+        metrics: convertBigInt(metrics),
+        storeCount: convertBigInt(storeCount),
+        salesByToken: convertBigInt(salesByDayToken),
+        salesByCategory: convertBigInt(revenueByCategoryToken),
+        statusCounts: convertBigInt(statusCounts),
+        categoryCounts: convertBigInt(categoryCounts),
+        TOKEN_LOGOS: convertBigInt(TOKEN_LOGOS),
+        viewMode: convertBigInt(viewMode),
+        focus: insightType,
+      };
+
       const res = await fetch("/api/insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          metrics: convertBigInt(metrics),
-          prevMetrics: convertBigInt(prevMetrics),
-          storeCount,
-          salesByToken: convertBigInt(salesByToken),
-          salesByCategory: convertBigInt(salesByCategory),
-          focus: insightType,
-        }),
+        body: JSON.stringify(payload),
         signal: controllerRef.current.signal,
       });
 
-      if (!res.body) throw new Error("No response body");
+      if (!res.ok) throw new Error("Failed to fetch insights");
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      let buffer = "";
-
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        buffer += decoder.decode(value || new Uint8Array());
-
-        const lines = buffer.split("\n").filter(Boolean);
-        if (lines.length) setAiResponse(lines);
-      }
+      const data = await res.json();
+      setAiResponse(data.insights.split("\n").filter(Boolean));
     } catch (err) {
       if (err.name !== "AbortError") {
         setAiResponse(["❌ Failed to fetch insights."]);
@@ -97,7 +91,6 @@ export default function AnalyticsInsights({
     }
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -110,7 +103,6 @@ export default function AnalyticsInsights({
 
   const activeOption = options.find((opt) => opt.value === insightType);
 
-  // Auto-scroll container when new AI response lines show up
   useEffect(() => {
     if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
   }, [aiResponse]);
@@ -132,7 +124,7 @@ export default function AnalyticsInsights({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Custom Dropdown */}
+          {/* Dropdown */}
           <div ref={dropdownRef} className="relative">
             <button
               onClick={(e) => {

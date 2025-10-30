@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
-// Deployed contracts addresses & ABIs
-export const MARKETPLACE_ADDRESS = "0x0a7e3660A00A28651821C048351aabcdDbf0a1B1";
+// Deployed contract addresses & ABIs
+export const MARKETPLACE_ADDRESS = "0xF410e3a0abC755e86f098241e9E18EdB66eE6CB5";
 export const MARKETPLACE_ABI = [
   {
     inputs: [
@@ -2953,7 +2953,7 @@ export const MARKETPLACE_ABI = [
     type: "receive",
   },
 ];
-const USDC_ABI = [
+export const USDC_ABI = [
   {
     inputs: [],
     stateMutability: "nonpayable",
@@ -2985,48 +2985,6 @@ const USDC_ABI = [
     type: "event",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "spender",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "approve",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "mint",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -3044,30 +3002,6 @@ const USDC_ABI = [
     ],
     name: "Mint",
     type: "event",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "transfer",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
   },
   {
     anonymous: false,
@@ -3095,35 +3029,6 @@ const USDC_ABI = [
     type: "event",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "from",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "transferFrom",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -3139,17 +3044,6 @@ const USDC_ABI = [
   {
     stateMutability: "payable",
     type: "fallback",
-  },
-  {
-    inputs: [],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    stateMutability: "payable",
-    type: "receive",
   },
   {
     inputs: [
@@ -3173,6 +3067,30 @@ const USDC_ABI = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "spender",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "approve",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -3218,6 +3136,24 @@ const USDC_ABI = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "mint",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -3272,12 +3208,76 @@ const USDC_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "transfer",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "transferFrom",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    stateMutability: "payable",
+    type: "receive",
+  },
 ];
-const USDC_ADDRESS = "0xA85C486c0e57267c954064Fd500077BDEdFa6704";
-const USDT_ADDRESS = "0x4d54Ac4Df9304E305338fF35272367aD21c0a7dE";
-const DAI_ADDRESS = "0xCbE7063E2B5B5B4f574A9748354B6B076516a536";
-const NFT_ADDRESS = "0xAB64c8c61A489C0f598A35a253E70875083Ea602";
-const NFT_ABI = [
+export const USDC_ADDRESS = "0x0a7e3660A00A28651821C048351aabcdDbf0a1B1";
+export const USDT_ADDRESS = "0xAB64c8c61A489C0f598A35a253E70875083Ea602";
+export const DAI_ADDRESS = "0x11e07C5C1FD74731e4567cF40FF59eE169F5301c";
+export const NFT_ADDRESS = "0x6F3DC4A0389e3B7ecE795F9B9cEab88545EA13aA";
+export const NFT_ABI = [
   {
     inputs: [
       {
@@ -3933,7 +3933,8 @@ const NFT_ABI = [
     type: "function",
   },
 ];
-/** 
+
+/**
  * Connected ethers.js contract instance
  * @param {ethers.Signer | ethers.Provider} signerOrProvider
  * @returns {ethers.Contract}

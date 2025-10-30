@@ -12,9 +12,9 @@ async function main() {
   const feeCollector = "0x82aD97bEf0b7E17b1D30f56e592Fc819E1eeDAfc"; 
   const mediator = "0x82aD97bEf0b7E17b1D30f56e592Fc819E1eeDAfc"; 
   const initialTokens = [
-    "0xA85C486c0e57267c954064Fd500077BDEdFa6704",
-    "0x4d54Ac4Df9304E305338fF35272367aD21c0a7dE",
-    "0xCbE7063E2B5B5B4f574A9748354B6B076516a536",
+    "0x0a7e3660A00A28651821C048351aabcdDbf0a1B1",
+    "0xAB64c8c61A489C0f598A35a253E70875083Ea602",
+    "0x11e07C5C1FD74731e4567cF40FF59eE169F5301c",
     "0x0000000000000000000000000000000000000000"
   ];
   
@@ -36,10 +36,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.log(error);
   process.exitCode = 1;
 });
 
 
 // deployment code
-// npx hardhat run scripts/deploy.js --network swellTestnet
+// npx hardhat run scripts/deploy.js --network hederaTestnet

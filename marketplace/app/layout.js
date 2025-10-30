@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Web3Modal } from "@/lib/web3modal";
+import { Web3Modal } from "@/context/web3modal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

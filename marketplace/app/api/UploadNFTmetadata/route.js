@@ -44,7 +44,7 @@ export async function POST(req) {
 
     return NextResponse.json({ tokenURI });
   } catch (err) {
-    console.error("Upload metadata error:", err);
+    console.log("Upload metadata error:", err);
     return NextResponse.json({ error: "Upload failed", details: err.message }, { status: 500 });
   }
 }

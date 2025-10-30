@@ -16,7 +16,7 @@ import ViewReceiptModal from "./ViewReceiptModal";
 export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], darkMode }) {
   const { walletProvider } = useWeb3ModalProvider();
   const { isConnected, address } = useWeb3ModalAccount();
-
+ 
   const [contract, setContract] = useState(null);
   const [mediator, setMediator] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -75,10 +75,14 @@ const dropdownRef = useRef(null);
     })();
   }, [walletProvider]);
 
+ 
   // Load orders for current user
+  const [refresh, setRefresh] = useState(false)
   const loadOrders = async () => {
     if (!contract || !address) return;
-    setLoading(true);
+     if (refresh === false) {
+          setLoading(true)
+        }
     try {
       const raw = await contract.getOrdersForUser(address);
       // raw is Order[]; mapping to friendly JS objects
@@ -119,44 +123,16 @@ const dropdownRef = useRef(null);
     }
   };
 
-  // Attach contract event listeners once when contract becomes available
+  // load all orders
   useEffect(() => {
     if (!contract) return;
-    // handlers reload orders 
-    const refresh = () => {
-      loadOrders().catch((e) => console.log("refresh err", e));
-    };
-
-    const events = [
-      "ListingCreated",
-      "OrderRequested",
-      "ShippingSet",
-      "MarkedShipped",
-      "OrderConfirmedAndPaid",
-      "DeliveryConfirmed",
-      "Refunded",
-      "DisputeOpened",
-      "DisputeCancelled",
-      "DisputeResolved",
-      "OrderCanceledByBuyer",
-      "OrderCancelledBySeller",
-      "SellerRated",
-      "ReceiptMinted",
-    ];
-
-    events.forEach((evt) => contract.on(evt, refresh));
-
-    // initial load and return cleanup to remove listeners on unmount or contract change
     loadOrders();
-
-    return () => {
-      events.forEach((evt) => {
-        try {
-          contract.removeAllListeners(evt);
-        } catch (e) {
-        }
-      });
-    };
+    setRefresh(true)
+      // update every 90s
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 900000)
+    return () => clearInterval(interval);
   }, [contract, address]);
 
   // Dropdown outside click close
@@ -262,7 +238,7 @@ const dropdownRef = useRef(null);
     );
   };
 
-  // Buyer: confirm & pay (handles ETH vs token)
+  // Buyer: confirm & pay (handles HBAR vs token)
 const ERC20_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function allowance(address owner, address spender) external view returns (uint256)",
@@ -288,9 +264,9 @@ const openBuyerConfirmAndPay = (order) => {
       try {
         setLoading(true);
         const totalWei = parseUnits(total.toString(), 18);
-
+        
         if (!order.paymentToken || order.paymentToken === "0x0000000000000000000000000000000000000000") {
-          // Native ETH/HBAR
+          // Native HBAR
           const tx = await contract.buyerConfirmAndPay(order.id, { value: totalWei });
           await tx.wait();
           pushToast?.("success", "Paid and confirmed ✅");
@@ -360,6 +336,19 @@ const openConfirmDelivery = (orderId, orderData, tokenName) => {
           ],
         };
 
+        // Step 2: Send metadata to Hedera File Service (HFS) API - This is the HFS version of the metadata upload
+        // const uploadRes = await fetch("/api/uploadHFSMetadata", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(metadata),
+        // });
+
+        // const { success, tokenURI } = await uploadRes.json();
+        // if (!success || !tokenURI) {
+        //   return console.log("Failed to upload metadata to HFS");
+        // }
+
+        // Step 2: Send metadata to Filebase (IPFS) API
         const uploadRes = await fetch("/api/UploadNFTmetadata", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -369,10 +358,10 @@ const openConfirmDelivery = (orderId, orderData, tokenName) => {
         const { tokenURI } = await uploadRes.json();
         if (!tokenURI) throw new Error("Failed to upload metadata");
 
-        // Step 2: Call contract confirmDelivery with tokenURI
+        // Step 3: Call contract confirmDelivery with tokenURI
         await callTx("confirmDelivery", orderId, positive, comment, tokenURI);
       } catch (err) {
-        console.error("Confirm delivery error:", err);
+        console.log("Confirm delivery error:", err);
         pushToast?.("error", err.message || "Failed to confirm delivery");
       } finally {
         setLoading(false);
@@ -493,7 +482,7 @@ const closeReceiptModal = () => {
   const activeStatusOption = statusOptions.find((s) => s.value === statusFilter) || statusOptions[0];
 
   // If not connected
-  if (!walletProvider) {
+  if (!address) {
     return <div className={`p-6 rounded-lg ${darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"}`}>Please connect your wallet to view orders.</div>;
   }
 
@@ -626,7 +615,7 @@ const closeReceiptModal = () => {
             mediator && mediator.toLowerCase() === address?.toLowerCase();
           const tokenInfo =
             TOKEN_LOGOS[o.paymentToken] || {
-              logo: "/logos/default.svg",
+              logo: "/images/coin.png",
               name: "TOKEN",
             };
           const statusLabel = STATUS?.[o.status] ?? String(o.status);

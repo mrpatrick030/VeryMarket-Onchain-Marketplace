@@ -5,14 +5,7 @@ import { BrowserProvider, Contract } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
 import { Sun, Moon } from "lucide-react";
 
-const TOKEN_LOGOS = {
-  "0xA85C486c0e57267c954064Fd500077BDEdFa6704": { logo: "/images/usdc.png", name: "USDC" },
-  "0x4d54Ac4Df9304E305338fF35272367aD21c0a7dE": { logo: "/images/tether.png", name: "USDT" },
-  "0xCbE7063E2B5B5B4f574A9748354B6B076516a536": { logo: "/images/dai.png", name: "DAI" },
-  "0x0000000000000000000000000000000000000000": { logo: "/images/eth.png", name: "ETH" },
-};
-
-export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode }) {
+export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode, TOKEN_LOGOS }) {
   const { walletProvider } = useWeb3ModalProvider();
   const { isConnected, address } = useWeb3ModalAccount();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -32,7 +25,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
         const lowerAddr = address.toLowerCase();
         setIsAdmin(lowerAddr === owner.toLowerCase() || lowerAddr === mediator.toLowerCase());
       } catch (err) {
-        console.error("Failed to fetch admin info:", err);
+        console.log("Failed to fetch admin info:", err);
       }
     }
     checkAdmin();
@@ -55,7 +48,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
         }
         setTokens(updatedTokens);
       } catch (err) {
-        console.error("Error loading tokens:", err);
+        console.log("Error loading tokens:", err);
       }
     }
     loadTokens();
@@ -131,7 +124,8 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
           </div>
 
           {/* Wallet + Dark mode */}
-          <w3m-button />
+          <w3m-Button />
+          
           <button
             onClick={handleToggle}
             className={`flex items-center gap-2 px-3 py-1 cursor-pointer bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 transform transition-transform duration-500 ${
@@ -204,7 +198,8 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode 
           </div>
 
           {/* Wallet + Dark mode */}
-          <w3m-button />
+           <w3m-Button />
+
 <button
   onClick={handleToggle}
   className={`flex items-center justify-center gap-2 px-3 py-2 cursor-pointer bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 transform transition-transform duration-500 ${

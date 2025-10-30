@@ -61,21 +61,12 @@ export default function Home() {
           setHighlight({ listings: false, orders: false, disputes: false });
         }, 1500);
       } catch (err) {
-        console.error("Error fetching stats:", err);
+        console.log("Error fetching stats:", err);
       }
     }
 
     updateStats();
 
-    // Real-time event listeners
-    contract.on("ListingCreated", updateStats);
-    contract.on("OrderRequested", updateStats);
-    contract.on("DisputeOpened", updateStats);
-    contract.on("DisputeResolved", updateStats);
-
-    return () => {
-      contract.removeAllListeners();
-    };
   }, [walletProvider, stats]);
 
   return (

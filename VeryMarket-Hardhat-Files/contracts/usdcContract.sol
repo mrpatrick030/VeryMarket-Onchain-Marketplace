@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 contract HederaUSDC {
-    string public name = "HederaUSDC";
+    string public name = "HederaMockUSDC";
     string public symbol = "USDC";
     uint8 public decimals = 18;
     uint public totalSupply;
@@ -38,7 +38,7 @@ contract HederaUSDC {
     }
 
     function transfer(address to, uint amount) external returns (bool) {
-        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        require(balanceOf[msg.sender] >= amount, "Insufficient address balance");
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;
         emit Transfer(msg.sender, to, amount);

@@ -14,75 +14,91 @@ const ActivityFeed = React.memo(({ walletProvider, TOKEN_LOGOS = {}, darkMode })
     return `${Math.floor(diff / 86400)}d ago`;
   }
 
-useEffect(() => {
-  if (!walletProvider) return;
+  useEffect(() => {
+    if (!walletProvider) return;
+    const provider = new BrowserProvider(walletProvider);
+    const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
 
-  const provider = new BrowserProvider(walletProvider);
-  const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+    const fetchActivity = async () => {
+      try {
+        const newFeed = [];
 
-  const addActivity = (type, data) => {
-    setActivityFeed((prev) => [
-      {
-        type,
-        description:
-          type === "ListingCreated"
-            ? `🆕 New listing created...`
-            : type === "OrderRequested"
-            ? `🛒 Order requested for listing #${data.listingId}`
-            : type === "DeliveryConfirmed"
-            ? `💯 Order #${data.id} completed successfully`
-            : type === "DisputeOpened"
-            ? `⚖️ Dispute opened for order #${data.id}`
-            : type === "DisputeResolved"
-            ? `✅ Dispute resolved for order #${data.id}`
-            : "Marketplace activity detected",
-        token: TOKEN_LOGOS[data.paymentToken] || null,
-        timeAgo: timeAgo(Date.now()),
-      },
-      ...prev.slice(0, 9), // show last 10
-    ]);
-  };
+        // Listings - last 10 only
+        const listingCount = Number(await contract.listingCount());
+        const listingStart = Math.max(listingCount - 10, 0);
+        for (let i = listingStart; i < listingCount; i++) {
+          const listing = await contract.getListing(i);
+          newFeed.unshift({
+            id: `listing-${i}`,
+            type: "ListingCreated",
+            description: `🆕 New listing created by store ${(Number(listing.storeId) + 1).toString().padStart(3, "0")}`,
+            token: TOKEN_LOGOS[listing.paymentToken] || null,
+            highlight: true,
+          });
+        }
 
-  // Attach listeners
-  const onListingCreated = (seller) => addActivity("ListingCreated", { seller:String(seller) });
-  const onOrderRequested = (buyer, listingId, paymentToken) =>
-    addActivity("OrderRequested", { buyer, listingId, paymentToken });
-  const onDeliveryConfirmed = (id, buyer, seller, paymentToken) =>
-    addActivity("DeliveryConfirmed", { id, buyer, seller, paymentToken });
-  const onDisputeOpened = (id) => addActivity("DisputeOpened", { id });
-  const onDisputeResolved = (id) => addActivity("DisputeResolved", { id });
+        // Orders - last 10 only
+        const orderCount = Number(await contract.orderCount());
+        const orderStart = Math.max(orderCount - 10, 0);
+        for (let i = orderStart; i < orderCount; i++) {
+          const order = await contract.getOrder(i);
+          let type, desc;        
 
-  contract.on("ListingCreated", onListingCreated);
-  contract.on("OrderRequested", onOrderRequested);
-  contract.on("DeliveryConfirmed", onDeliveryConfirmed);
-  contract.on("DisputeOpened", onDisputeOpened);
-  contract.on("DisputeResolved", onDisputeResolved);
+          if (Number(order.status) === 1) {
+            type = "OrderRequested";
+            let desc = `🛒 Order requested for listing #${order.listingId}`;
+          }
+          else if (Number(order.status) === 7) {
+            type = "DeliveryConfirmed";
+            desc = `💯 Order #${i} completed successfully`;
+          } else if (Number(order.status) === 5) {
+            type = "DisputeOpened";
+            desc = `⚖️ Dispute opened for order #${i}`;
+          } else if (Number(order.status) === 9) {
+            type = "DisputeResolved";
+            desc = `✅ Dispute resolved for order #${i}`;
+          }
 
-  // Cleanup function removes only the listeners we added
-  return () => {
-    contract.off("ListingCreated", onListingCreated);
-    contract.off("OrderRequested", onOrderRequested);
-    contract.off("DeliveryConfirmed", onDeliveryConfirmed);
-    contract.off("DisputeOpened", onDisputeOpened);
-    contract.off("DisputeResolved", onDisputeResolved);
-  };
-}, [walletProvider]);
+          newFeed.unshift({
+            id: `order-${i}`,
+            type,
+            description: desc,
+            token: TOKEN_LOGOS[order.paymentToken] || null,
+            highlight: true,
+          });
+        }
+
+        setActivityFeed(newFeed.slice(0, 10)); // only keep latest 10 items
+      } catch (err) {
+        console.log("Error fetching activity:", err);
+      }
+    };
+
+    // Initial fetch
+    fetchActivity();
+
+    // Poll every 90s
+    const interval = setInterval(fetchActivity, 900000);
+    return () => clearInterval(interval);
+  }, [walletProvider, TOKEN_LOGOS]);
 
   return (
     <div className="rounded-2xl p-4 shadow-md border max-h-[300px] overflow-y-auto">
       {activityFeed.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">
-          No activity yet — VeryMarket events will appear here in real-time.
+          No activity yet — VeryMarket events will appear here shortly.
         </p>
       ) : (
         <ul className="space-y-3">
-          {activityFeed.map((a, i) => (
+          {activityFeed.map((a) => (
             <motion.li
-              key={i}
+              key={a.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className={`flex items-center gap-3 rounded-xl p-3 ${darkMode ? "bg-gray-700/60" : "bg-gray-50"}`}
+              className={`flex items-center gap-3 rounded-xl p-3 ${
+                darkMode ? "bg-gray-700/60" : "bg-gray-50"
+              } ${a.highlight ? "animate-pulse" : ""}`}
             >
               <span className="text-xl">
                 {a.type === "ListingCreated"
@@ -99,9 +115,10 @@ useEffect(() => {
               </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold">{a.description}</p>
-                <p className="text-xs text-gray-500">{a.timeAgo}</p>
               </div>
-              {a.token && <img src={a.token.logo} alt={a.token.name} className="w-5 h-5 rounded-full" />}
+              {a.token && (
+                <img src={a.token.logo} alt={a.token.name} className="w-5 h-5 rounded-full" />
+              )}
             </motion.li>
           ))}
         </ul>

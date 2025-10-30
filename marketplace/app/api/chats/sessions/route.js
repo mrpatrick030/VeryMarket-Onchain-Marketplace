@@ -17,7 +17,7 @@ export async function GET(req) {
     `;
     return NextResponse.json(session.rows[0] || null);
   } catch (err) {
-    console.error("Error fetching chat session:", err);
+    console.log("Error fetching chat session:", err);
     return NextResponse.json({ error: "Failed to fetch chat session" }, { status: 500 });
   }
 }
@@ -50,7 +50,7 @@ export async function POST(req) {
 
     return NextResponse.json(result.rows[0]);
   } catch (err) {
-    console.error("Error creating chat session:", err);
+    console.log("Error creating chat session:", err);
     return NextResponse.json({ error: "Failed to create chat session" }, { status: 500 });
   }
 }
