@@ -13,8 +13,9 @@ export default function ViewReceiptModal({ isOpen, onClose, order }) {
     const fetchMetadata = async () => {
       try {
         const res = await fetch(order.receiptURI);
-        const data = await res.json();
-        setMetadata(data);
+        const response = await fetch(`/api/viewNFTmetadataHFS?fileId=${order.receiptURI}`);
+        const data = await response.json();
+        setMetadata(data.metadata);
       } catch (err) {
         console.log("Failed to fetch NFT metadata:", err);
         setMetadata(null);

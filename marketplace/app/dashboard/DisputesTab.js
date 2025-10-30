@@ -272,30 +272,20 @@ const paginated = useMemo(() => {
           ],
         };
 
-        // Step 2: Send metadata to Hedera File Service (HFS) API - This is the HFS version of the metadata upload
-        // const uploadRes = await fetch("/api/uploadHFSMetadata", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify(metadata),
-        // });
-
-        // const { success, tokenURI } = await uploadRes.json();
-        // if (!success || !tokenURI) {
-        //   return console.log("Failed to upload metadata to HFS");
-        // }
-
-        // Step 2: Send metadata to Filebase (IPFS) API
-        const uploadRes = await fetch("/api/UploadNFTmetadata", {
+        // Step 2: Send metadata to Hedera File Service (HFS) API
+        const uploadRes = await fetch("/api/uploadHFSMetadata", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(metadata),
         });
 
-        const { tokenURI } = await uploadRes.json();
-        if (!tokenURI) throw new Error("Failed to upload metadata");
+        const { success, fileId } = await uploadRes.json();
+        if (!success || !fileId) {
+          return console.log("Failed to upload metadata to HFS");
+        }
 
-        // Step 3 — Call contract with tokenURI
-        const tx = await contract.resolveDispute(order.id, refundWei, payoutWei, tokenURI);
+        // Step 3 — Call contract with fileId
+        const tx = await contract.resolveDispute(order.id, refundWei, payoutWei, fileId);
         await tx.wait();
 
         pushToast?.("success", "✅ Dispute resolved and receipt NFT minted!");

@@ -2,64 +2,45 @@ import { NextResponse } from "next/server";
 import {
   Client,
   FileCreateTransaction,
-  FileAppendTransaction,
-  FileContentsQuery,
+  Hbar,
   PrivateKey,
 } from "@hashgraph/sdk";
 
 export async function POST(request) {
   try {
     const metadata = await request.json();
-
+    const operatorId = process.env.HEDERA_ACCOUNT_ID;
     const operatorKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
-    const client = Client.forTestnet().setOperator(
-      process.env.HEDERA_ACCOUNT_ID,
-      operatorKey
-    );
+    const client = Client.forTestnet().setOperator(operatorId, operatorKey);
 
-    // Step 1: Create an empty file (public access)
-    const createTx = new FileCreateTransaction()
-      .setKeys([]) // public file
-      .setContents("")
-      .setMaxTransactionFee(2_000_000); // small fee in tinybars
+    // Create a new file key
+    const fileKey = operatorKey;
 
-    const createSubmit = await createTx.execute(client);
-    const createReceipt = await createSubmit.getReceipt(client);
-    const fileId = createReceipt.fileId.toString();
+    // Step 1: Create and freeze transaction
+    const transaction = new FileCreateTransaction()
+      .setKeys([fileKey.publicKey])
+      .setContents(JSON.stringify(metadata))
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
 
-    console.log("✅ File created:", fileId);
+    // Step 2: Sign with file key
+    const signTx = await transaction.sign(fileKey);
 
-    // Step 2: Append metadata
-    const metadataBuffer = Buffer.from(JSON.stringify(metadata), "utf-8");
-    const appendTx = new FileAppendTransaction()
-      .setFileId(fileId)
-      .setContents(metadataBuffer)
-      .setMaxTransactionFee(2_000_000);
+    // Step 3: Execute with operator key
+    const submitTx = await signTx.execute(client);
 
-    await appendTx.execute(client);
-    console.log("📎 Metadata appended.");
+    // Step 4: Get receipt
+    const receipt = await submitTx.getReceipt(client);
+    const fileId = receipt.fileId.toString();
 
-    // Step 3: Verify contents directly from Hedera (not mirror)
-    console.log("⏳ Verifying file contents...");
-    const query = new FileContentsQuery().setFileId(fileId);
-    const contents = await query.execute(client);
-
-    if (!contents || contents.length === 0) {
-      return console.log("File contents not retrievable — append may have failed.");
-    }
-
-    console.log("✅ Verification successful — file readable on-chain.");
-
-    // Step 4: Return token URI (mirror URL)
     const tokenURI = `https://testnet.mirrornode.hedera.com/api/v1/files/${fileId}/contents`;
-    console.log("This is the tokenURI", tokenURI)
+
+    console.log("✅ File successfully created:", fileId);
+    console.log("🔗 Token URI:", tokenURI);
 
     return NextResponse.json({ success: true, fileId, tokenURI });
   } catch (err) {
-    console.log("❌ HFS upload error:", err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
+    console.error("❌ HFS upload error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
