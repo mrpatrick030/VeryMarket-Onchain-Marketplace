@@ -131,7 +131,7 @@ const dropdownRef = useRef(null);
       // update every 90s
     const interval = setInterval(() => {
       loadOrders();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
   }, [contract, address]);
 

@@ -197,7 +197,7 @@ const paginated = useMemo(() => {
       // update every 90s
     const interval = setInterval(() => {
       loadDisputes();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
   }, [contract]);
 

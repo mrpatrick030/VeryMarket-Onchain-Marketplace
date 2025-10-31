@@ -131,7 +131,7 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
       // update every 90s
     const interval = setInterval(() => {
       loadActiveListings();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
   }, [contract, address]);
 
@@ -443,7 +443,7 @@ const [itemsPerPage] = useState(10);
       // update every 90s
     const interval = setInterval(() => {
       fetchSellerListings();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
   }, [contract, profileSeller]);
 
@@ -506,7 +506,7 @@ useEffect(() => {
       // update every 90s
     const interval = setInterval(() => {
       fetchStore();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
 }, [contract, profileSeller]);
 
@@ -558,7 +558,7 @@ useEffect(() => {
     // update every 90s
     const interval = setInterval(() => {
       fetchMyStore();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
 }, [contract, address]);
 

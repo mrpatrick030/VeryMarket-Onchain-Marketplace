@@ -78,7 +78,7 @@ const ActivityFeed = React.memo(({ walletProvider, TOKEN_LOGOS = {}, darkMode })
     fetchActivity();
 
     // Poll every 90s
-    const interval = setInterval(fetchActivity, 900000);
+    const interval = setInterval(fetchActivity, 120000);
     return () => clearInterval(interval);
   }, [walletProvider, TOKEN_LOGOS]);
 

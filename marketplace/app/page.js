@@ -27,7 +27,7 @@ export default function Home() {
   // Auto redirect for connected users (after short delay)
   useEffect(() => {
     if (walletProvider) {
-      const timer = setTimeout(() => router.push("/dashboard"), 10000); 
+      const timer = setTimeout(() => router.push("/dashboard"), 300000); 
       return () => clearTimeout(timer);
     }
   }, [walletProvider, router]);
@@ -78,7 +78,9 @@ export default function Home() {
       />
       <div className="absolute inset-0 bg-black/40 z-0" />
 
-      <Navbar />
+     <div className="mt-[0.5cm] mb-[1cm] px-[1cm] flex justify-end">
+      <w3m-Button />
+     </div>
 
       {/* Intro */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center bg-[rgba(255,255,255,0.1)] backdrop-blur-md shadow-lg p-10 md:mx-[20%] mx-[5%] rounded-lg">
@@ -88,9 +90,8 @@ export default function Home() {
         <div className="mt-4 text-lg md:text-xl font-semibold text-gray-900 animate-fadeIn">
           E-commerce for the underbanked across Africa
         </div>
-        <p className="mt-4 text-lg md:text-xl text-white/90 max-w-2xl animate-fadeIn">
-          A decentralized marketplace powered by the Hedera Network. Buy, sell,
-          and manage your assets seamlessly on-chain.
+        <p className="mt-4 text-lg text-white/90 max-w-2xl animate-fadeIn">
+          VeryMarket combines AI intelligence with the Hedera File Service (HFS), Hedera Smart Contract Service (HSCS), and Hedera Token Service (HTS), creating a decentralized marketplace where every transaction, order, listing, and asset is transparently verifiable and fully on-chain.
         </p>
         <div className="my-8 flex gap-4 animate-slideUp">
           <button

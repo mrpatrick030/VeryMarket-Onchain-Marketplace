@@ -234,7 +234,7 @@ else {
       // update every 90s
     const interval = setInterval(() => {
       loadAll();
-    }, 900000)
+    }, 120000)
     return () => clearInterval(interval);
   }, [walletProvider, viewMode]);
 

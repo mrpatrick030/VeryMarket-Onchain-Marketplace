@@ -4,6 +4,7 @@ import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/rea
 import { BrowserProvider, Contract } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
 import { Sun, Moon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode, TOKEN_LOGOS }) {
   const { walletProvider } = useWeb3ModalProvider();
@@ -12,6 +13,8 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode,
   const [tokens, setTokens] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [toggleSpin, setToggleSpin] = useState(false);
+
+  const router = useRouter();
 
   // Check if user is admin
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode,
     <nav className="bg-white dark:bg-gray-800 shadow rounded-xl p-4 mb-6">
       {/* Top Row */}
       <div className="flex justify-between items-center">
-        <img src="images/VeryMarketLogo.png" alt="" width="130" className="inline-block" />
+        <img onClick={(e) => {router.push("/")}} src="images/VeryMarketLogo.png" alt="" width="130" className="inline-block" />
 
         {/* Hamburger (mobile only) */}
         <button
