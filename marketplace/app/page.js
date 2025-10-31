@@ -26,8 +26,8 @@ export default function Home() {
 
   // Auto redirect for connected users (after short delay)
   useEffect(() => {
-    if (walletProvider) {
-      const timer = setTimeout(() => router.push("/dashboard"), 300000); 
+    if (walletProvider || isConnected) {
+      const timer = setTimeout(() => router.push("/dashboard"), 60000); 
       return () => clearTimeout(timer);
     }
   }, [walletProvider, router]);
