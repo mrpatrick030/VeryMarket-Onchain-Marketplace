@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { BrowserProvider, Contract } from "ethers";
-import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -60,8 +60,8 @@ function shortOr(val, fallback = "-") {
 }
 
 export default function AnalyticsTab({ darkMode = false, TOKEN_LOGOS = {} }) {
-  const { walletProvider } = useWeb3ModalProvider();
-  const { address: userAddress } = useWeb3ModalAccount(); 
+  const { address: userAddress, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
   const [viewMode, setViewMode] = useState("global"); // "global" or "buyer" or "seller"
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState(null);

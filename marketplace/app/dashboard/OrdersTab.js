@@ -1,9 +1,6 @@
 "use client";
 import { useEffect, useState, useRef, useMemo } from "react";
-import {
-  useWeb3ModalProvider,
-  useWeb3ModalAccount,
-} from "@web3modal/ethers/react";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 import ConfirmModal from "./ConfirmModal";
@@ -14,8 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import ViewReceiptModal from "./ViewReceiptModal";
 
 export default function OrdersTab({ pushToast, TOKEN_LOGOS = {}, STATUS = [], darkMode }) {
-  const { walletProvider } = useWeb3ModalProvider();
-  const { isConnected, address } = useWeb3ModalAccount();
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
  
   const [contract, setContract] = useState(null);
   const [mediator, setMediator] = useState(null);

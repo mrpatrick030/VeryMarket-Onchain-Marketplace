@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BrowserProvider, Contract, parseUnits } from "ethers";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import axios from "axios";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 

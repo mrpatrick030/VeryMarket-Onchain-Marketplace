@@ -1,9 +1,13 @@
 import { motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
-import { BrowserProvider, Contract } from "ethers";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../../lib/contract";
 
-const ActivityFeed = React.memo(({ walletProvider, TOKEN_LOGOS = {}, darkMode }) => {
+const ActivityFeed = React.memo(({ TOKEN_LOGOS = {}, darkMode }) => {
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
+  
   const [activityFeed, setActivityFeed] = useState([]);
 
   function timeAgo(timestamp) {

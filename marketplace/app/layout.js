@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Web3Modal } from "@/context/web3modal";
+import { AppKit } from "@/context/appkit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,11 +12,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = { title: "VeryMarket", description: "Decentralized Marketplace" };
+export const metadata = { title: "VeryMarket", description: "On-chain Marketplace" };
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50"><Web3Modal>{children}</Web3Modal></body>
+      <body className="min-h-screen bg-gray-50"><AppKit>{children}</AppKit></body>
     </html>
   );
 }

@@ -2,14 +2,14 @@
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  useWeb3ModalProvider,
-} from "@web3modal/ethers/react";
-import { BrowserProvider, Contract } from "ethers";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
 
 export default function Home() {
-  const { walletProvider } = useWeb3ModalProvider();
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
+  
   const router = useRouter();
 
   const [stats, setStats] = useState({
@@ -79,7 +79,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-black/40 z-0" />
 
      <div className="mt-[0.5cm] mb-[1cm] px-[1cm] flex justify-end">
-      <w3m-Button />
+      <appkit-button />
      </div>
 
       {/* Intro */}

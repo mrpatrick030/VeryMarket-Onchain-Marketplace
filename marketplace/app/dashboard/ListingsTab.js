@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { Search, Grid, List, LayoutGrid, Menu, X, MessageCircle, MessageSquare, UserCircle, Folder, Store, ChevronUp, ChevronDown } from "lucide-react";
 
@@ -12,8 +12,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 
 export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
-  const { walletProvider } = useWeb3ModalProvider();
-  const { isConnected, address } = useWeb3ModalAccount();
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
 
   const [contract, setContract] = useState(null);
   const [listings, setListings] = useState([]);

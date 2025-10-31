@@ -1,14 +1,15 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useWeb3ModalProvider, useWeb3ModalAccount } from "@web3modal/ethers/react";
-import { BrowserProvider, Contract } from "ethers";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
 import { Sun, Moon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode, TOKEN_LOGOS }) {
-  const { walletProvider } = useWeb3ModalProvider();
-  const { isConnected, address } = useWeb3ModalAccount();
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
+  
   const [isAdmin, setIsAdmin] = useState(false);
   const [tokens, setTokens] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,7 +128,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode,
           </div>
 
           {/* Wallet + Dark mode */}
-          <w3m-Button />
+          <appkit-button />
           
           <button
             onClick={handleToggle}
@@ -201,7 +202,7 @@ export default function Navbar({ activeTab, setActiveTab, darkMode, setDarkMode,
           </div>
 
           {/* Wallet + Dark mode */}
-           <w3m-Button />
+           <appkit-button />
 
 <button
   onClick={handleToggle}

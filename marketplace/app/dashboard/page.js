@@ -1,10 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  useWeb3ModalProvider,
-  useWeb3ModalAccount,
-} from "@web3modal/ethers/react";
-import { BrowserProvider, Contract } from "ethers";
+import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 
 import Navbar from "@/components/Navbar";
 import OrdersTab from "./OrdersTab";
@@ -38,8 +35,8 @@ const STATUS = [
 ];
 
 export default function Dashboard() {
-  const { walletProvider } = useWeb3ModalProvider();
-  const { isConnected, address } = useWeb3ModalAccount();
+  const { address, caipAddress, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("eip155");
 
   const [orders, setOrders] = useState([]);
   const [listings, setListings] = useState([]);
