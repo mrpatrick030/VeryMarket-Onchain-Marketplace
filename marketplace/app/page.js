@@ -100,12 +100,12 @@ export default function Home() {
           >
             Go to Dashboard
           </button>
-          <button
-            onClick={() => router.push("/about")}
+          <Link href="https://drive.google.com/drive/folders/1tNL6bmLbsEO9mPdOKLrZAnSKI2UAjvea?usp=drive_link" target="_blank"><button
             className="px-6 py-3 border-2 border-white text-white cursor-pointer font-semibold rounded-xl shadow-lg hover:bg-white hover:text-black transition-all transform hover:-translate-y-1 hover:scale-105"
           >
             Learn More
           </button>
+          </Link>
         </div>
       </div>
 
