@@ -128,17 +128,157 @@ VeryMarket-Hardhat-Files
 ### 3. 📦 Orders Tab
 ![Orders](https://supposed-emerald-snake.myfilebase.com/ipfs/QmQFRPsZZpPQFGB1epk2imCcXZxi1PTSKZHmyBRGcAJXxa)
 
-**Purpose:** Manages buyer and seller order actions — escrow payments, shipping, confirmations.
+**Purpose:** Manages buyer and seller order actions 
 
-#### Buyer Actions
-- Confirm payment  
-- Confirm delivery  
-- Open dispute  
+📦 VeryMarket — Order Flow
 
-#### Seller Actions
-- Mark as shipped  
-- Set shipping fee  
-- Cancel order  
+This explains the complete lifecycle of an order on VeryMarket, from creation to fulfillment, including optional actions and dispute handling.
+
+---
+
+1. Order Creation (Buyer)
+
+The buyer initiates an order request from a product listing.
+
+Inputs required:
+
+Quantity of the product
+
+Delivery location
+
+
+Order status: Requested (until seller responds)
+
+
+
+---
+
+2. Seller Sets Shipping
+
+Seller receives the order request.
+
+Seller sets:
+
+Shipping fee
+
+Estimated delivery time (in days)
+
+
+Order status updated: ShippingSet
+
+
+
+---
+
+3. Buyer Payment
+
+Buyer reviews shipping fee and order details.
+
+Buyer confirms and makes total payment:
+
+Total Payment = Product Price + Shipping Fee
+
+Funds are placed into escrow until delivery is confirmed.
+
+Order status updated: Escrowed
+
+
+
+---
+
+4. Shipping (Seller)
+
+Seller marks the products as shipped once they have dispatched them.
+
+Order status updated: Shipped
+
+
+
+---
+
+5. Delivery Confirmation (Buyer)
+
+Buyer confirms delivery of the products.
+
+Buyer can:
+
+Rate the seller
+
+Leave remarks or review
+
+
+NFT receipt is minted to the buyer’s wallet.
+
+Receipt metadata is stored on Hedera File Service (HFS).
+
+Escrowed funds are automatically released to the seller’s registered wallet.
+
+Order status updated: Released.
+
+
+
+---
+
+Optional Actions
+
+1. Order Cancellation
+
+Both parties can cancel an order before payment/escrow.
+
+2. Request refundn
+
+Buyer can also cancel or request refund before seller marks as shipped.
+
+
+3. Dispute Handling
+
+Both buyer and seller can initiate a dispute after funds are in escrow.
+
+Initiator of a dispute can cancel it before resolution.
+
+Mediator also has authority to cancel disputes.
+
+Dispute resolution:
+
+Only the mediator can resolve disputes.
+
+Funds are released to the appropriate party based on mediator’s decision.
+
+Receipt of resolution is stored on HFS as NFT metadata.
+
+
+
+4. Chat System
+
+A session-based chat is available for buyer, seller, and mediator.
+
+Used for:
+
+Clarifying order details
+
+Negotiating disputes
+
+Coordinating delivery
+
+
+
+
+---
+
+Order Flow Diagram (Simplified)
+
+Buyer creates order → Seller sets shipping → Buyer pays → Escrow → Seller ships → Buyer confirms → NFT receipt minted → Funds released
+        ↑                  ↑                 ↑
+        |                  |                 |
+   Cancel before escrow     |                 |
+        |                  |                 |
+    Dispute initiation <---+-----------------+
+        |
+  Mediator resolves → Funds released accordingly
+
+
+---
+
 
 **Order Receipt**  
 ![Order Receipt](https://supposed-emerald-snake.myfilebase.com/ipfs/QmaFXw1yz7GV57JnebjhwtpMvApAYm8VxEyLiShXPeqvWc)
@@ -428,3 +568,8 @@ Full Stack Web & Blockchain Developer
 **MIT License**  
 
 Copyright (c) 2025 **Patrick Ominisan**  
+
+
+
+---
+
