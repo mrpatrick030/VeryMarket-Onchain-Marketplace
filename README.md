@@ -531,17 +531,19 @@ Full Stack Web & Blockchain Developer
 [Hedera Hashscan](https://hashscan.io/testnet)
 
 **Marketplace Contract**  
-✅ [VeryMarket](https://hashscan.io/testnet/contract/0.0.7158940) 🟢  
+✅ [VeryMarket](https://hashscan.io/testnet/contract/0.0.7158940) 🟢 
+`0.0.7158940`
 `0xF410e3a0abC755e86f098241e9E18EdB66eE6CB5`
 
 **NFT Receipt Contract**  
 ✅ [ReceiptNFT](https://hashscan.io/testnet/contract/0.0.7158953) 🟢  
+`0.0.7158953`
 `0x6F3DC4A0389e3B7ecE795F9B9cEab88545EA13aA`
 
 **Mock Tokens**
-- [MockUSDC](https://hashscan.io/testnet/contract/0.0.7158836): `0x0a7e3660A00A28651821C048351aabcdDbf0a1B1`
-- [MockUSDT](https://hashscan.io/testnet/contract/0.0.7158882): `0xAB64c8c61A489C0f598A35a253E70875083Ea602`
-- [MockDAI](https://hashscan.io/testnet/contract/0.0.7158890): `0x11e07C5C1FD74731e4567cF40FF59eE169F5301c`
+- [MockUSDC](https://hashscan.io/testnet/contract/0.0.7158836): `0x0a7e3660A00A28651821C048351aabcdDbf0a1B1` `0.0.7158836`
+- [MockUSDT](https://hashscan.io/testnet/contract/0.0.7158882): `0xAB64c8c61A489C0f598A35a253E70875083Ea602` `0.0.7158882`
+- [MockDAI](https://hashscan.io/testnet/contract/0.0.7158890): `0x11e07C5C1FD74731e4567cF40FF59eE169F5301c` `0.0.7158890`
 
 --- 
 
