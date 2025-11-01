@@ -2,6 +2,7 @@
 ![File](https://supposed-emerald-snake.myfilebase.com/ipfs/QmcRNLePGiU5rtPfRGr4Zfxit3LCeucLZw4w2AdVCHzvtc)
 
 - [Hedera course certification](https://certs.hashgraphdev.com/62279945-c127-4185-a919-7ca7b348fa18.pdf)
+
 **VeryMarket** is an on-chain decentralized marketplace where **buyers** can purchase listed products and **sellers** can own stores and sell goods securely.  
 It integrates **Hedera File Service (HFS)** for NFT metadata, **Hedera Smart Contract Service (HSCS)** for transactions, and **Hedera Token Service (HTS)** for payments with mock **USDC, USDT, and DAI** tokens.
 
