@@ -1,9 +1,9 @@
-# 🛍️ VeryMarket — On-Chain Marketplace on Hedera [Web App](https://verymarket.vercel.app) / [Demo Video](https://youtu.be/GEWxXKut_RA)
+# 🛍️ VeryMarket — On-chain Decentralized Marketplace on Hedera [Web App](https://verymarket.vercel.app) / [Demo Video](https://youtu.be/GEWxXKut_RA) / [Pitch Deck](https://drive.google.com/drive/folders/1tNL6bmLbsEO9mPdOKLrZAnSKI2UAjvea?usp=drive_link)
 ![File](https://supposed-emerald-snake.myfilebase.com/ipfs/QmcRNLePGiU5rtPfRGr4Zfxit3LCeucLZw4w2AdVCHzvtc)
 
 - [Hedera course certification](https://certs.hashgraphdev.com/62279945-c127-4185-a919-7ca7b348fa18.pdf)
-
-**VeryMarket** is an on-chain marketplace where **buyers** can purchase listed products and **sellers** can own stores and sell goods securely.  
+- [VeryMarket pitch deck](https://drive.google.com/drive/folders/1tNL6bmLbsEO9mPdOKLrZAnSKI2UAjvea?usp=drive_link)
+**VeryMarket** is an on-chain decentralized marketplace where **buyers** can purchase listed products and **sellers** can own stores and sell goods securely.  
 It integrates **Hedera File Service (HFS)** for NFT metadata, **Hedera Smart Contract Service (HSCS)** for transactions, and **Hedera Token Service (HTS)** for payments with mock **USDC, USDT, and DAI** tokens.
 
 The marketplace also features **AI-powered analytics**, **real-time order tracking**, **live-market data**, and **wallet connectivity** using **AppKit**.
@@ -19,8 +19,8 @@ The marketplace also features **AI-powered analytics**, **real-time order tracki
 | 💬 Chat System | Session-based chat between buyer, seller, and mediator |
 | 💡 AI Insights | Analytics powered by OpenAI GPT-4.1 mini |
 | 📊 Live Dashboard and Charts | Token sales, market data, and category insights |
-| ⚙️ Hedera Integration | Smart Contract, Token, and File Services |
-| 🎨 UX | Dark/light mode, animations, and responsive layout |
+| ⚙️ Hedera Integration | Smart Contract, Token, and Hedera File Services |
+| 🎨 UX | Dark/light mode, animations, search, pagination, filters, drag and drop, and responsive layout |
 
 ---
 
@@ -38,6 +38,10 @@ VeryMarket/
 │   │   ├── OrdersTab.js
 │   │   ├── DisputesTab.js
 │   │   └── AnalyticsTab.js
+│   │   └── page.js
+│   ├── components/
+│   │   └── navbar.js              # Navigation bar
+│   └── page.js
 │   ├── lib/
 │   │   └── contract.js              # ABI & marketplace address
 │   └── page.js
@@ -46,7 +50,16 @@ VeryMarket-Hardhat-Files
 ├── contracts/
 │   ├── VerymarketContract.sol
 │   ├── usdcContract.sol
+│   ├── usdtContract.sol
+│   ├── daiContract.sol
 │   └── ReceiptNFT.sol
+├── scripts/
+│   ├── deploy.js
+│   ├── deployUSDC.js
+│   ├── deployUSDT.js
+│   ├── deployDAI.js
+│   └── deployNFT.js
+│   └── linkReceiptNFT.js
 └── README.md
 ```
 
@@ -54,7 +67,7 @@ VeryMarket-Hardhat-Files
 
 ## ⚙️ Core Features
 
-- 📁 Metadata stored on **HFS** and images stored on **Filebase IPFS**
+- 📁 Metadata stored on Hedera File Service **HFS** and images stored on **Filebase IPFS**
 - 🔗 Wallet connection via **AppKit**
 - 🧠 AI analytics powered by **GPT-4.1 mini**
 - 🪙 Token payments using **USDC, USDT, DAI**
@@ -267,6 +280,7 @@ OpenAI GPT-4.1 mini is used in `/api/insights` to generate marketplace summaries
 - Node.js 22+  
 - Next.js 15+  
 - Hardhat  
+- Ethers.js
 - Hedera Testnet Account  
 - Hashgraph SDK  
 - Filebase Account  
@@ -314,6 +328,25 @@ npm run dev
 Full Stack Web & Blockchain Developer  
 
 ---
+
+## Problems with Current Online Marketplaces
+- Online marketplaces are centralised - trust issues
+- Lack of transparent payment tracking
+- Receipts and order records are often not tamper-proof
+- Limited insights into sales, trends, and market behaviour
+- Payment disputes are hard to resolve
+- Sellers don’t fully own their store data or transactions
+- Large platform fees - eat into seller profits and increase buyer costs Problem
+
+## VeryMarket's Solutions
+- Decentralized on-chain marketplace - buyers and sellers transact directly without a middleman or intermediary (Thanks to the Hedera Smart Contract Service)
+- NFT-based receipts and dispute management - Fully transparent and tamper-proof (Thanks to the Hedera File service HFS and Hashgraph sdk)
+- Sellers own their store data - complete control over products and listings
+- AI-powered analytics - real-time insights on sales, trends, live-market data and token activity.
+- Multi-token payments (USDC, USDT, DAI) - seamless and secure transactions with low network fees in HBAR (Thanks to the Hedera Token Service)
+- Accessibilty - VeryMarket is accessible from anywhere in the world with just a wallet login
+- Polished UX & wallet integration - Intuitive experience and interface for buyers and sellers
+- Live order tracking - buyers and sellers get to track their order status in real-time
 
 ## 🪙 Contract Addresses (Hedera Testnet)
 [Hedera Hashscan](https://hashscan.io/testnet)
