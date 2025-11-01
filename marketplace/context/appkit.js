@@ -24,12 +24,14 @@ createAppKit({
   features: {
     analytics: true,
   },
+  themeMode: "dark",
       themeVariables: {
-    "--apkt-accent":"#234",
-    "--apkt-z-index": 9999,
-    "--apkt-color-mix": "#234",
-    "--apkt-color-mix-strength": 40,
-    "--apkt-border-radius-master": "10px"
+    "--w3m-accent":"#fff",
+    "--w3m-font-family":"sans-serif",
+    "--w3m-z-index": 9999,
+    "--w3m-color-mix": "#234",
+    "--w3m-color-mix-strength": 20,
+    "--w3m-border-radius-master": "10px"
   },
     chainImages: {
     296: 'https://supposed-emerald-snake.myfilebase.com/ipfs/QmThU47Qaw4DaevhNZg4v6fJqZ2FQ8XCR9LZjbaQqfe7xc'

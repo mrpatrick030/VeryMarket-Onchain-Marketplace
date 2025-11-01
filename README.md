@@ -401,7 +401,7 @@ Full Stack Web & Blockchain Developer
 - Sellers own their store data - complete control over products and listings
 - AI-powered analytics - real-time insights on sales, trends, live-market data and token activity.
 - Multi-token payments (USDC, USDT, DAI) - seamless and secure transactions with low network fees in HBAR (Thanks to the Hedera Token Service)
-- Accessibilty - VeryMarket is accessible from anywhere in the world with just a wallet login
+- Accessibilty - VeryMarket is accessible from anywhere in the world with just a wallet login, and that makes it accessible to underbanked regions in Africa.
 - Polished UX & wallet integration - Intuitive experience and interface for buyers and sellers
 - Live order tracking - buyers and sellers get to track their order status in real-time
 
