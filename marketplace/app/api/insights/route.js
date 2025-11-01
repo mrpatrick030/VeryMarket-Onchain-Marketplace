@@ -56,7 +56,7 @@ export async function POST(req) {
 
     // Construct AI prompt
     const prompt = `
-You are an expert analytics assistant for a Hedera blockchain marketplace called VeryMarket.
+You are an expert analytics assistant for a Hedera network decentralized on-chain marketplace called VeryMarket.
 
 Focus: ${focusText}
 
@@ -98,7 +98,7 @@ Guidelines:
       messages: [
         {
           role: "system",
-          content: "You are a data analytics expert summarizing insights for a Hedera blockchain marketplace dashboard.",
+          content: "You are a data analytics expert summarizing insights for a Hedera network decentralized on-chain marketplace dashboard.",
         },
         { role: "user", content: prompt },
       ],

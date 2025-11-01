@@ -200,6 +200,40 @@ openDispute(uint256 orderId);
 ### 🧾 /api/uploadHFSMetadata
 Uploads metadata JSON to **Hedera File Service (HFS)**.
 
+```metadata
+    const metadata = await request.json();
+    const operatorId = process.env.HEDERA_ACCOUNT_ID;
+    const operatorKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
+    const client = Client.forTestnet().setOperator(operatorId, operatorKey);
+
+    // Create a new file key
+    const fileKey = operatorKey;
+
+    // Step 1: Create and freeze transaction
+    const transaction = new FileCreateTransaction()
+      .setKeys([fileKey.publicKey])
+      .setContents(JSON.stringify(metadata))
+      .setMaxTransactionFee(new Hbar(2))
+      .freezeWith(client);
+
+    // Step 2: Sign with file key
+    const signTx = await transaction.sign(fileKey);
+
+    // Step 3: Execute with operator key
+    const submitTx = await signTx.execute(client);
+
+    // Step 4: Get receipt
+    const receipt = await submitTx.getReceipt(client);
+    const fileId = receipt.fileId.toString();
+
+    const tokenURI = `https://testnet.mirrornode.hedera.com/api/v1/files/${fileId}/contents`;
+
+    console.log("✅ File successfully created:", fileId);
+    console.log("🔗 Token URI:", tokenURI);
+
+    return NextResponse.json({ success: true, fileId, tokenURI });
+```
+
 **Returns:**
 ```json
 {
@@ -210,6 +244,26 @@ Uploads metadata JSON to **Hedera File Service (HFS)**.
 
 ### 🤖 /api/aiInsights
 Generates AI-driven marketplace insights using **OpenAI GPT-4.1 mini**.
+
+```api
+  // Call OpenAI using gpt-4.1 version
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      temperature: 0.7,
+      messages: [
+        {
+          role: "system",
+          content: "You are a data analytics expert summarizing insights for a Hedera network decentralized on-chain marketplace dashboard.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
+
+    const aiText = completion.choices[0].message.content;
+
+    return new Response(JSON.stringify({ insights: aiText }), {
+      headers: { "Content-Type": "application/json" },
+    });
 
 ---
 
