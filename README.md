@@ -80,8 +80,10 @@ VeryMarket-Hardhat-Files
 ## 📁 Tabs Overview
 
 ### 1. 🏪 Create Listings Tab
+- Create store
 ![Create store](https://supposed-emerald-snake.myfilebase.com/ipfs/QmeoJ8RHSMw4Ppfdux5nctJwk4aNv35x3bdKJQn4tBqy1u)
 
+- Create listing
 ![Create Listings](https://supposed-emerald-snake.myfilebase.com/ipfs/QmVXXAMYkhKxAMCyKscmpJM3feHKdShQJNrX2zsQhCmpdx)
 
 **Purpose:** Allows sellers to create or update their store and list products on-chain.
