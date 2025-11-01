@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAppKitProvider, useAppKitAccount } from "@reown/appkit/react";
 import { BrowserProvider, Contract, formatUnits } from "ethers";
 import { MARKETPLACE_ADDRESS, MARKETPLACE_ABI } from "../lib/contract";
+import Link from "next/link";
 
 export default function Home() {
   const { address, caipAddress, isConnected } = useAppKitAccount();
