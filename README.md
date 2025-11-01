@@ -265,7 +265,7 @@ Generates AI-driven marketplace insights using **OpenAI GPT-4.1 mini**.
     return new Response(JSON.stringify({ insights: aiText }), {
       headers: { "Content-Type": "application/json" },
     });
-
+```
 ---
 
 ## 🪙 Smart Contracts
