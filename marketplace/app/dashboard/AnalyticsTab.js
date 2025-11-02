@@ -447,7 +447,7 @@ const pieData = {
     ))}
   </div>
 </div>
-      <div className="flex items-center overflow-auto justify-between mb-3">
+      <div className="flex items-center justify-between mb-3">
         {/* Date Filter panel */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2">
@@ -476,9 +476,9 @@ const pieData = {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
-            className="flex items-center gap-2 bg-transparent rounded-md p-1"
+            className="flex md:flex-row flex-col gap-2 bg-transparent rounded-md p-1"
           >
-            <div className="relative">
+            <div className="flex relative">
               <label className="sr-only">Start date</label>
               <DatePicker
                 selected={startDate}
@@ -496,6 +496,7 @@ const pieData = {
               </div>
             </div>
 
+            <div className="flex gap-2">
             <div className="relative">
               <label className="sr-only">End date</label>
               <DatePicker
@@ -522,6 +523,7 @@ const pieData = {
             >
               Clear
             </button>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -584,7 +586,7 @@ const pieData = {
 {/* Sales by Token */}
 <div className="mt-6">
   <h2 className="text-lg font-semibold mb-4">Sales by Token</h2>
-  <div className="grid md:grid-cols-3 grid-cols-2 gap-4">
+  <div className="grid md:grid-cols-3 grid-cols-1 gap-4">
     {Object.keys(TOKEN_LOGOS).map((tokenAddr) => {
       let total = 0;
       for (const L of listings) {

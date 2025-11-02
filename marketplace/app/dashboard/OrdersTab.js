@@ -487,7 +487,7 @@ const closeReceiptModal = () => {
     </div>
 
           {/* Dropdown filter and search area */}
-          <div className="flex items-center gap-3">
+          <div className="flex md:flex-row flex-col gap-3">
                 {/* Search Input */}
                 <div
                   className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
@@ -534,7 +534,7 @@ const closeReceiptModal = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.15 }}
-                    className={`absolute right-0 mt-2 w-52 rounded-xl shadow-lg z-20 overflow-hidden border ${
+                    className={`absolute md:right-0 mt-2 w-52 rounded-xl shadow-lg z-20 overflow-hidden border ${
                       darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-200"
                     }`}
                   >

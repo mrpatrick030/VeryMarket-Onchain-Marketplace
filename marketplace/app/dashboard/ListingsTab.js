@@ -771,7 +771,7 @@ useEffect(() => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-20 overflow-hidden border ${
+            className={`absolute mt-2 w-48 rounded-md shadow-lg z-20 overflow-hidden border ${
               darkMode
                 ? "bg-gray-800 border-gray-600"
                 : "bg-white border-gray-200"

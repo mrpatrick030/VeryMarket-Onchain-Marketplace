@@ -328,12 +328,12 @@ const paginated = useMemo(() => {
   return (
     <div className={`space-y-6 p-5 ${darkMode ? "bg-gray-900 text-gray-100" : "bg-white text-gray-900"}`}>
 {/* Header */}
-<div className="flex flex-wrap items-center justify-between mb-2 gap-3">
+<div className="flex flex-wrap md:flex-row flex-col justify-between mb-2 gap-3">
   {/* Left side: title */}
-  <h2 className="text-xl font-bold">⚖️ Disputes</h2>
+  <h2 className="flex text-xl font-bold">⚖️ Disputes</h2>
 
   {/* Right side: controls */}
-  <div className="flex items-center gap-3">
+  <div className="flex md:flex-row flex-col gap-3">
     {/* Search Input */}
     <div
       className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
@@ -391,7 +391,7 @@ const paginated = useMemo(() => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg z-20 overflow-hidden border ${
+            className={`absolute md:right-0 mt-2 w-48 rounded-xl shadow-lg z-20 overflow-hidden border ${
               darkMode
                 ? "bg-gray-700 border-gray-600"
                 : "bg-white border-gray-200"
