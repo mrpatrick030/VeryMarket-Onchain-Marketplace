@@ -231,7 +231,7 @@ else {
     useEffect(() => {
     loadAll();
     setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       loadAll();
     }, 120000)

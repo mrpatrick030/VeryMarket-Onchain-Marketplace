@@ -191,7 +191,7 @@ const paginated = useMemo(() => {
   useEffect(() => {
     if (contract) loadDisputes();
     setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       loadDisputes();
     }, 120000)

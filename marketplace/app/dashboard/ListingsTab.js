@@ -143,7 +143,7 @@ useEffect(() => {
     loadActiveListings();
 
         setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       loadActiveListings();
     }, 120000)
@@ -455,7 +455,7 @@ const [itemsPerPage] = useState(10);
     if (contract) fetchSellerListings();
 
         setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       fetchSellerListings();
     }, 120000)
@@ -518,7 +518,7 @@ useEffect(() => {
   fetchStore();
 
         setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       fetchStore();
     }, 120000)
@@ -570,7 +570,7 @@ useEffect(() => {
   fetchMyStore();
 
    setRefresh(true)
-    // update every 90s
+    // update every 120s
     const interval = setInterval(() => {
       fetchMyStore();
     }, 120000)

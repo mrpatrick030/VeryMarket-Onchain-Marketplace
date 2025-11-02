@@ -125,7 +125,7 @@ const dropdownRef = useRef(null);
     if (!contract) return;
     loadOrders();
     setRefresh(true)
-      // update every 90s
+      // update every 120s
     const interval = setInterval(() => {
       loadOrders();
     }, 120000)
