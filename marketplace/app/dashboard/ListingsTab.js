@@ -32,6 +32,21 @@ export default function ListingsTab({ TOKEN_LOGOS, pushToast, darkMode }) {
   const bg = darkMode ? "bg-gray-800" : "bg-white";
   const inputBg = darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900";
 
+useEffect(() => {
+  const handleResize = () => {
+    if (window.innerWidth < 768) {
+      setLayout("grid1"); 
+    } else {
+      setLayout("grid2"); 
+    }
+  };
+
+  // Run on mount and when resizing
+  handleResize();
+  window.addEventListener("resize", handleResize);
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
+
 
 
   // ---------------- SETUP CONTRACT ----------------
@@ -587,7 +602,7 @@ useEffect(() => {
       
       {/* Sidebar (Desktop) */}
 <aside
-  className={`hidden md:block w-64 p-4 border-r overflow-y-auto max-h-screen sticky top-0 
+  className={`hidden lg:block w-64 p-4 border-r overflow-y-auto max-h-screen sticky top-0 
     ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
 >
   <div className="flex items-center justify-between mb-3">
@@ -623,7 +638,7 @@ useEffect(() => {
 
 {/* Sidebar (Mobile Drawer) */}
 {sidebarOpen && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 md:hidden">
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 lg:hidden">
     <div
       className={`absolute left-0 top-0 w-80 h-full shadow-2xl p-5 overflow-y-auto flex flex-col
         ${darkMode ? "bg-gray-800 text-gray-200" : "bg-white text-gray-900"}`}
@@ -690,31 +705,50 @@ useEffect(() => {
 
 {/* Main Content */}
 <div className={`flex-1 p-4 ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}>
-  {/* Controls */}
-  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-    {/* Search */}
-    <div className={`flex items-center border rounded-full px-2 py-1 w-full md:w-1/3 ${darkMode ? "bg-gray-700 border-gray-700" : "bg-gray-100 border-gray-300"}`}>
-      <Search size={18} className={`mr-2 ${darkMode ? "text-gray-300" : "text-gray-500"}`} />
-      <input
-        type="text"
-        placeholder="Search for listings..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className={`w-full outline-none p-1 rounded-full ${darkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900"}`}
-      />
-    </div>
+{/* Controls */}
+<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4 w-full">
+  
+  {/* Search Bar */}
+  <div
+    className={`flex items-center border rounded-full px-3 py-2 w-full md:w-1/3 ${
+      darkMode
+        ? "bg-gray-700 border-gray-700"
+        : "bg-gray-100 border-gray-300"
+    }`}
+  >
+    <Search
+      size={18}
+      className={`mr-2 ${
+        darkMode ? "text-gray-300" : "text-gray-500"
+      }`}
+    />
+    <input
+      type="text"
+      placeholder="Search for listings..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className={`w-full outline-none rounded-full text-sm ${
+        darkMode ? "text-gray-200 bg-gray-700" : "text-gray-900 bg-gray-100"
+      }`}
+    />
+  </div>
 
-    {/* Mobile Category Toggle */}
-    <div className="flex items-center gap-2">
-      <button
-        className={`md:hidden p-2 border rounded flex items-center gap-2 ${darkMode ? "border-gray-700 hover:bg-gray-800 text-gray-200" : "border-gray-300 hover:bg-gray-200 text-gray-900"}`}
-        onClick={() => setSidebarOpen(true)}
-      >
-        <Menu size={18} /> Categories
-      </button>
+  {/* Right Controls */}
+  <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+    {/* Mobile Category Button */}
+    <button
+      className={`lg:hidden p-2 border rounded flex items-center gap-2 ${
+        darkMode
+          ? "border-gray-700 hover:bg-gray-800 text-gray-200"
+          : "border-gray-300 hover:bg-gray-200 text-gray-900"
+      }`}
+      onClick={() => setSidebarOpen(true)}
+    >
+      <Menu size={18} /> Categories
+    </button>
 
-      {/* Sort + Layout */}
-     <div ref={dropdownRef} className="relative">
+    {/* Sort Dropdown */}
+    <div ref={dropdownRef} className="relative">
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -738,7 +772,9 @@ useEffect(() => {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
             className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-20 overflow-hidden border ${
-              darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"
+              darkMode
+                ? "bg-gray-800 border-gray-600"
+                : "bg-white border-gray-200"
             }`}
           >
             {options.map((opt) => (
@@ -766,11 +802,41 @@ useEffect(() => {
       </AnimatePresence>
     </div>
 
-      <button onClick={() => setLayout("grid1")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><List size={18} /></button>
-      <button onClick={() => setLayout("grid2")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><Grid size={18} /></button>
-      <button onClick={() => setLayout("grid3")} className={`p-2 border rounded ${darkMode ? "hover:bg-gray-800 border-gray-700 text-gray-200" : "hover:bg-gray-200 border-gray-300 text-gray-900"}`}><LayoutGrid size={18} /></button>
+    {/* Layout Buttons */}
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <button
+        onClick={() => setLayout("grid1")}
+        className={`p-2 border rounded ${
+          darkMode
+            ? "hover:bg-gray-800 border-gray-700 text-gray-200"
+            : "hover:bg-gray-200 border-gray-300 text-gray-900"
+        }`}
+      >
+        <List size={18} />
+      </button>
+      <button
+        onClick={() => setLayout("grid2")}
+        className={`p-2 border rounded ${
+          darkMode
+            ? "hover:bg-gray-800 border-gray-700 text-gray-200"
+            : "hover:bg-gray-200 border-gray-300 text-gray-900"
+        }`}
+      >
+        <Grid size={18} />
+      </button>
+      <button
+        onClick={() => setLayout("grid3")}
+        className={`p-2 border rounded ${
+          darkMode
+            ? "hover:bg-gray-800 border-gray-700 text-gray-200"
+            : "hover:bg-gray-200 border-gray-300 text-gray-900"
+        }`}
+      >
+        <LayoutGrid size={18} />
+      </button>
     </div>
   </div>
+</div>
 
   {/* View Your Listings Button */}
 {myStore?.exists && myStore?.owner?.toLowerCase() === address?.toLowerCase() && (

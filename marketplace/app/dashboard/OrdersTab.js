@@ -481,7 +481,7 @@ const closeReceiptModal = () => {
       darkMode ? "bg-gray-900 text-gray-200" : "bg-white text-gray-900"
     }`}
   >
-    <div className="flex flex-col flex-row justify-between gap-3 mb-2">
+    <div className="flex flex-col md:flex-row justify-between gap-3 mb-2">
     <div>
       <h2 className="text-xl font-bold mb-2">📦 My Orders</h2>
     </div>

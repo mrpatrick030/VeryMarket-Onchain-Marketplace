@@ -447,7 +447,7 @@ const pieData = {
     ))}
   </div>
 </div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center overflow-auto justify-between mb-3">
         {/* Date Filter panel */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2">
